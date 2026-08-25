@@ -2,6 +2,14 @@
 
 > [**English README**](./README.md)
 
+<div align="center">
+  <img src="docs/chat-window.png" alt="聊天窗口" width="88%" style="border-radius:8px;border:1px solid #333" />
+  <p><em>聊天窗口（对话 / 思考 / 工具 / 话题导航）</em></p>
+  <br/>
+  <img src="docs/admin-window.png" alt="管理后台" width="88%" style="border-radius:8px;border:1px solid #333" />
+  <p><em>管理后台（LLM 供应商 / MCP / 审批 / 审计 / 用量）</em></p>
+</div>
+
 基于 **DeepSeek Harness 原理** 的 B/S 多模态 AI 聊天平台：LLM + MCP（Model Context Protocol）+ Skill 插件化编排，前端由 **Cordis** 插件内核驱动 Three.js 轻量 3D 界面。
 
 > 参照论文：*A Programming Paradigm for Spatiotemporal Composability* —— 一切皆插件，由 Cordis 驱动。
