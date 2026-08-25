@@ -15,6 +15,16 @@ const { t } = useI18n()
 const thinkingOpen = ref(false)
 
 const isAssistant = computed(() => props.message.role === 'assistant')
+
+interface MermaidView {
+  scale: number
+  panX: number
+  panY: number
+  dragging: boolean
+  showingSource: boolean
+  source: string
+}
+const mermaidViews = new Map<HTMLDivElement, MermaidView>()
 const streamingNow = computed(() => props.message.status === 'sending')
 
 // 话题操作按钮：仅在 assistant 回复就绪（非流式）时显示
@@ -173,11 +183,150 @@ async function renderMermaid() {
   if (!host) return
   const blocks = Array.from(host.querySelectorAll('pre.mermaid')) as HTMLElement[]
   if (!blocks.length) return
+  // 必须在 mermaid.run 之前保存原始源码（渲染后 pre 内容会变成 SVG/CSS）
+  const raws = blocks.map((b) => b.textContent ?? '')
   try {
     await mermaid.run({ nodes: blocks, suppressErrors: true })
   } catch {
     // 渲染失败保留源码文本，不影响消息
   }
+  // 为每个图包一层交互容器 + 工具条（放大/缩小/重置/拖动/源码）
+  blocks.forEach((pre, i) => {
+    if (pre.parentElement?.classList.contains('mermaid-box')) return
+    const wrap = document.createElement('div')
+    wrap.className = 'mermaid-box'
+    wrap.dataset.idx = String(i)
+    pre.parentNode!.insertBefore(wrap, pre)
+    wrap.appendChild(pre)
+    const view: MermaidView = { scale: 1, panX: 0, panY: 0, dragging: false, showingSource: false, source: raws[i] }
+    mermaidViews.set(wrap, view)
+    const tools = document.createElement('div')
+    tools.className = 'mermaid-tools'
+    // 动态创建按钮并绑定事件（避免模板与多图状态错乱）
+    const acts: [string, string, string][] = [
+      ['out', '缩小', '−'],
+      ['in', '放大', '＋'],
+      ['reset', '重置（1:1）', '↺'],
+      ['drag', '拖动', '✋'],
+      ['source', '查看源码', '📄'],
+    ]
+    for (const [act, title, label] of acts) {
+      const btn = document.createElement('button')
+      btn.dataset.act = act
+      btn.title = title
+      btn.textContent = label
+      tools.appendChild(btn)
+    }
+    wrap.appendChild(tools)
+    applyMermaidView(wrap, view)
+  })
+}
+
+function applyMermaidView(box: HTMLDivElement, v: MermaidView) {
+  const svg = box.querySelector('svg')
+  if (svg) {
+    svg.style.transform = `translate(${v.panX}px, ${v.panY}px) scale(${v.scale})`
+    svg.style.transformOrigin = 'center center'
+    svg.style.display = v.showingSource ? 'none' : ''
+  }
+  let src = box.querySelector<HTMLElement>('.mermaid-source')
+  if (v.showingSource) {
+    if (!src) {
+      src = document.createElement('pre')
+      src.className = 'mermaid-source'
+      box.appendChild(src)
+    }
+    src.textContent = v.source
+  } else {
+    src?.remove()
+  }
+  box.classList.toggle('dragging', v.dragging)
+}
+
+function onMermaidToolsClick(e: MouseEvent) {
+  const btn = (e.target as HTMLElement).closest<HTMLElement>('button[data-act]')
+  if (!btn) return
+  const box = btn.closest<HTMLDivElement>('.mermaid-box')
+  if (!box) return
+  const v = mermaidViews.get(box)
+  if (!v) return
+  switch (btn.dataset.act) {
+    case 'in':
+      v.scale = Math.min(4, v.scale * 1.2)
+      break
+    case 'out':
+      v.scale = Math.max(0.25, v.scale / 1.2)
+      break
+    case 'reset':
+      v.scale = 1
+      v.panX = 0
+      v.panY = 0
+      break
+    case 'drag':
+      v.dragging = !v.dragging
+      break
+    case 'source':
+      v.showingSource = !v.showingSource
+      break
+  }
+  applyMermaidView(box, v)
+  e.stopPropagation()
+}
+
+function onMermaidPanStart(e: MouseEvent) {
+  const box = (e.target as HTMLElement).closest<HTMLDivElement>('.mermaid-box')
+  if (!box) return
+  const v = mermaidViews.get(box)
+  if (!v || !v.dragging) return
+  const start = { x: e.clientX, y: e.clientY }
+  const move = (ev: MouseEvent) => {
+    v.panX += ev.clientX - start.x
+    v.panY += ev.clientY - start.y
+    start.x = ev.clientX
+    start.y = ev.clientY
+    applyMermaidView(box, v)
+  }
+  const up = () => {
+    window.removeEventListener('mousemove', move)
+    window.removeEventListener('mouseup', up)
+  }
+  window.addEventListener('mousemove', move)
+  window.addEventListener('mouseup', up)
+  e.preventDefault()
+}
+
+function onMermaidWheel(e: WheelEvent) {
+  const box = (e.target as HTMLElement).closest<HTMLDivElement>('.mermaid-box')
+  if (!box) return
+  const v = mermaidViews.get(box)
+  if (!v) return
+  const factor = e.deltaY < 0 ? 1.1 : 1 / 1.1
+  v.scale = Math.min(4, Math.max(0.25, v.scale * factor))
+  applyMermaidView(box, v)
+  e.preventDefault()
+}
+
+/** 简单 Mermaid 源码格式化：按行拆分、常见分隔符后断行缩进，单行/紧凑源码变为可读多行 */
+function formatMermaidSource(raw: string): string {
+  if (!raw) return ''
+  const lines = raw.split(/\r?\n/)
+  // 多行源码原样返回（仅去除多余空行）
+  if (lines.length > 1) {
+    return lines.filter((l) => l.trim().length > 0).join('\n')
+  }
+  const single = raw.trim()
+  // 单行：在关键分隔符后断行，并用缩进区分层级
+  return single
+    .replace(/[\n\r]+/g, ' ')
+    .replace(/\s*(\{\s*)($)/g, '$1\n')
+    .replace(/\s*(\}\s*)/g, '\n$1')
+    .replace(/(\s*)(->>|-->|->|==>|-.->|---)|\s+(--)/g, (_m, p1) => (p1 ? `\n  ${p1} ` : '\n  -- '))
+    .split('\n')
+    .map((l, i) => {
+      const depth = (l.match(/^\s{2}/g) ?? []).length
+      return '  '.repeat(Math.min(depth, 4)) + l.trim()
+    })
+    .join('\n')
 }
 
 function prettyArgs(raw?: string): string {
@@ -238,7 +387,7 @@ function prettyArgs(raw?: string): string {
       <!-- 正文（打字机揭示 → Markdown + Mermaid） -->
       <div v-if="message.content || message.status !== 'sending'" class="bubble" :class="{ streaming: streamingNow }">
         <template v-if="message.content && !mdReady"><div class="plain-text">{{ shownContent }}</div></template>
-        <div v-else-if="mdReady" ref="contentRef" class="md" v-html="mdHtml"></div>
+        <div v-else-if="mdReady" ref="contentRef" class="md" v-html="mdHtml" @click="onMermaidToolsClick" @mousedown="onMermaidPanStart" @wheel="onMermaidWheel"></div>
         <span v-else-if="streamingNow" class="skeleton">▍</span>
         <span v-else-if="message.status === 'stopped'" class="nc-dim">{{ t('chat.stoppedNote') }}</span>
         <span v-else-if="message.status === 'failed'" class="nc-dim">{{ t('chat.failedNote') }}</span>
@@ -529,7 +678,7 @@ function prettyArgs(raw?: string): string {
   margin: 0.3em 0 !important;
 }
 
-/* Mermaid 图：居中、自适应宽度 */
+/* Mermaid 图：居中、自适应宽度 + 交互工具条（放大/缩小/重置/拖动） */
 .md pre.mermaid {
   background: transparent;
   border: none;
@@ -541,5 +690,71 @@ function prettyArgs(raw?: string): string {
   max-width: 100%;
   height: auto;
   margin: 0 auto;
+}
+
+.mermaid-box {
+  position: relative;
+  margin: 8px 0;
+}
+
+.mermaid-box .mermaid-tools {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  display: flex;
+  gap: 2px;
+  background: var(--nc-surface);
+  border: 1px solid var(--nc-border);
+  border-radius: 8px;
+  padding: 2px;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 5;
+  user-select: none;
+}
+
+.mermaid-box:hover .mermaid-tools {
+  opacity: 1;
+}
+
+.mermaid-box .mermaid-tools button {
+  min-width: 22px;
+  height: 22px;
+  border: none;
+  background: transparent;
+  color: var(--nc-text);
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 13px;
+  line-height: 1;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.mermaid-box .mermaid-tools button:hover {
+  background: rgba(148, 163, 184, 0.15);
+}
+
+.mermaid-box.dragging {
+  cursor: grab;
+}
+
+.mermaid-box.dragging:active {
+  cursor: grabbing;
+}
+
+.mermaid-source {
+  font-family: var(--nc-font-mono, ui-monospace, SFMono-Regular, Menlo, monospace);
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--nc-text);
+  background: rgba(0, 0, 0, 0.25);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin: 4px 0;
+  overflow-x: auto;
+  white-space: pre;
+  text-align: left;
 }
 </style>
