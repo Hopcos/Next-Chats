@@ -88,15 +88,15 @@ body {
   font-size: 0.85em;
 }
 
-/* 消息气泡 */
+/* 消息气泡：紧凑行距（内容区行距由 MessageItem 的 .md 全局规则统一控制） */
 .bubble {
   border-radius: var(--nc-radius);
   background: var(--nc-surface);
   border: 1px solid var(--nc-border);
   backdrop-filter: blur(10px);
-  padding: 12px 16px;
-  font-size: 14px;
-  line-height: 1.7;
+  padding: 10px 14px;
+  font-size: 13.5px;
+  line-height: 1.15;
   white-space: pre-wrap;
   word-break: break-word;
 }

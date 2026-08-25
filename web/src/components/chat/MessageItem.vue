@@ -266,8 +266,8 @@ function prettyArgs(raw?: string): string {
 <style scoped>
 .row {
   display: flex;
-  gap: 10px;
-  margin-bottom: 18px;
+  gap: 8px;
+  margin-bottom: 4px;
   align-items: flex-start;
 }
 
@@ -292,6 +292,8 @@ function prettyArgs(raw?: string): string {
 .body {
   max-width: 78%;
   min-width: 120px;
+  /* 行距随 .md 容器（1.15）；plain-text 打字机阶段继承此值 */
+  line-height: 1.15;
 }
 
 .row.user .body {
@@ -306,7 +308,7 @@ function prettyArgs(raw?: string): string {
   display: flex;
   flex-wrap: wrap;
   gap: 8px;
-  margin-bottom: 6px;
+  margin-bottom: 4px;
   justify-content: flex-end;
 }
 
@@ -320,15 +322,15 @@ function prettyArgs(raw?: string): string {
 
 .status {
   font-size: 12px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 /* ---- 思考区：浅灰背景（与最终输出区分），折叠为收起动画，内容始终在 DOM ---- */
 .think-block {
-  margin-bottom: 10px;
+  margin-bottom: 6px;
   border: 1px solid var(--nc-border);
-  border-radius: 10px;
-  padding: 6px 12px;
+  border-radius: 8px;
+  padding: 4px 10px;
   background: color-mix(in srgb, var(--nc-text-dim) 12%, transparent);
 }
 
@@ -361,21 +363,21 @@ function prettyArgs(raw?: string): string {
 }
 
 .think-body {
-  margin-top: 8px;
+  margin-top: 4px;
   font-size: 13px;
-  line-height: 1.65;
+  line-height: 1.15;
   white-space: pre-wrap;
   opacity: 0.82;
   max-height: 320px;
   overflow-y: auto;
-  padding: 8px 10px;
+  padding: 6px 10px;
   border-left: 2px solid color-mix(in srgb, var(--nc-primary) 40%, transparent);
   background: color-mix(in srgb, var(--nc-bg) 30%, transparent);
 }
 
 .context-note {
   font-size: 11.5px;
-  margin-top: 4px;
+  margin-top: 3px;
 }
 
 .skeleton {
@@ -391,12 +393,12 @@ function prettyArgs(raw?: string): string {
 
 .usage {
   font-size: 11px;
-  margin-top: 6px;
+  margin-top: 4px;
 }
 
 /* ---- 话题操作按钮（hover 显示） ---- */
 .actions {
-  margin-top: 8px;
+  margin-top: 5px;
   opacity: 0;
   transition: opacity 0.15s;
   display: flex;
@@ -432,108 +434,109 @@ function prettyArgs(raw?: string): string {
 .plain-text {
   white-space: pre-wrap;
 }
+</style>
 
-/* ---- Markdown 内容样式 ---- */
-.md :deep(p) {
-  margin: 0.4em 0;
+<!--
+  全局（非 scoped）Markdown 内容样式：
+  v-html 渲染的内容不在组件 scoped 作用域内，scoped + :deep() 的覆盖不可靠，
+  这里统一用全局类 .md 直接控制，行距压到 1.3（密集排版）。
+-->
+<style>
+/* 行距唯一事实源 = .md 容器（继承给所有子元素），子元素不再单独设 line-height，
+   避免任何子级规则被跳过/覆盖导致行距不一致；!important 免疫全局样式 */
+.md {
+  line-height: 1.1 !important;
+  font-size: 13.5px;
 }
 
-.md :deep(h1),
-.md :deep(h2),
-.md :deep(h3),
-.md :deep(h4) {
-  margin: 0.7em 0 0.35em;
-  line-height: 1.35;
+.md p {
+  margin: 0.08em 0 !important;
 }
 
-.md :deep(h1) {
-  font-size: 1.45em;
+.md li {
+  margin: 0.02em 0 !important;
 }
 
-.md :deep(h2) {
-  font-size: 1.25em;
+.md ol,
+.md ul {
+  margin: 0.08em 0 !important;
+  padding-left: 1.25em;
 }
 
-.md :deep(h3) {
-  font-size: 1.1em;
+.md h1,
+.md h2,
+.md h3,
+.md h4 {
+  margin: 0.26em 0 0.12em !important;
 }
 
-.md :deep(h4) {
-  font-size: 1em;
-}
+.md h1 { font-size: 1.38em; }
+.md h2 { font-size: 1.22em; }
+.md h3 { font-size: 1.08em; }
+.md h4 { font-size: 1em; }
 
-.md :deep(ul),
-.md :deep(ol) {
-  padding-left: 1.4em;
-  margin: 0.4em 0;
-}
-
-.md :deep(li) {
-  margin: 0.15em 0;
-}
-
-.md :deep(a) {
+.md a {
   color: var(--nc-primary);
 }
 
-.md :deep(hr) {
+.md hr {
   border: none;
   border-top: 1px solid var(--nc-border);
-  margin: 1em 0;
+  margin: 0.4em 0 !important;
 }
 
-.md :deep(img) {
+.md img {
   max-width: 100%;
   border-radius: 8px;
 }
 
-.md :deep(blockquote) {
+.md blockquote {
   border-left: 3px solid var(--nc-primary);
-  margin: 0.5em 0;
-  padding-left: 12px;
+  margin: 0.2em 0 !important;
+  padding-left: 10px;
   color: var(--nc-text-dim);
 }
 
-.md :deep(table) {
+.md table {
   border-collapse: collapse;
-  margin: 0.5em 0;
+  margin: 0.2em 0 !important;
 }
 
-.md :deep(th),
-.md :deep(td) {
+.md th,
+.md td {
   border: 1px solid var(--nc-border);
-  padding: 4px 10px;
+  padding: 1px 7px;
 }
 
-.md :deep(code) {
+.md code {
   font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
-  font-size: 0.92em;
+  font-size: 0.9em;
 }
 
-.md :deep(:not(pre) > code) {
+.md :not(pre) > code {
   background: color-mix(in srgb, var(--nc-text-dim) 18%, transparent);
-  padding: 1px 5px;
-  border-radius: 5px;
+  padding: 0 4px;
+  border-radius: 4px;
 }
 
-.md :deep(pre) {
+.md pre {
   background: color-mix(in srgb, var(--nc-text-dim) 10%, transparent);
   border: 1px solid var(--nc-border);
   border-radius: 8px;
-  padding: 10px 12px;
+  padding: 8px 10px;
   overflow-x: auto;
-  margin: 0.5em 0;
+  margin: 0.3em 0 !important;
 }
 
 /* Mermaid 图：居中、自适应宽度 */
-.md :deep(pre.mermaid) {
+.md pre.mermaid {
   background: transparent;
   border: none;
   text-align: center;
   padding: 4px 0;
 }
 
-.md :deep(pre.mermaid svg) {
+.md pre.mermaid svg {
   max-width: 100%;
   height: auto;
   margin: 0 auto;

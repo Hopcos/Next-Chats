@@ -111,7 +111,7 @@ onUnmounted(() => {
 .msg-list {
   flex: 1;
   overflow-y: auto;
-  padding: 20px 8%;
+  padding: 10px 4%;
   scroll-behavior: smooth;
 }
 
