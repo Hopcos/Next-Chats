@@ -25,7 +25,8 @@ const menus = [
 ]
 
 function isActive(path: string) {
-  return route.path === path || (path === '/admin/llm' && route.path.startsWith('/admin'))
+  // 精确匹配：仅当前路由恰好是该菜单项时才高亮（/admin 会重定向到 /admin/llm，因此无需前缀匹配）
+  return route.path === path
 }
 </script>
 

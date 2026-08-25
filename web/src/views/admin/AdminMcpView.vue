@@ -216,12 +216,14 @@ onMounted(load)
           <el-tag :type="row.isVision ? 'success' : 'info'" size="small">{{ row.isVision ? t('common.yes') : t('common.no') }}</el-tag>
         </template>
       </el-table-column>
-      <el-table-column :label="t('common.actions')" width="230" fixed="right">
+      <el-table-column :label="t('common.actions')" width="330" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" :loading="fetchingId === row.id" type="primary" plain @click="fetchCatalog(row)">{{ t('admin.mcp.fetch') }}</el-button>
-          <el-button size="small" text @click="ping(row)">{{ t('common.ping') }}</el-button>
-          <el-button size="small" text @click="openEdit(row)">{{ t('common.edit') }}</el-button>
-          <el-button size="small" text type="danger" @click="remove(row)">{{ t('common.delete') }}</el-button>
+          <div class="row-actions">
+            <el-button size="small" type="primary" plain :loading="fetchingId === row.id" @click="fetchCatalog(row)">{{ t('admin.mcp.fetch') }}</el-button>
+            <el-button size="small" text @click="ping(row)">{{ t('common.ping') }}</el-button>
+            <el-button size="small" text @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+            <el-button size="small" text type="danger" @click="remove(row)">{{ t('common.delete') }}</el-button>
+          </div>
         </template>
       </el-table-column>
     </el-table>
@@ -300,6 +302,13 @@ onMounted(load)
 .instr-fetch {
   align-self: flex-start;
   margin-top: 2px;
+  white-space: nowrap;
+}
+
+.row-actions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
   white-space: nowrap;
 }
 </style>
