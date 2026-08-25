@@ -28,7 +28,13 @@ const langOptions = [
 ]
 
 onMounted(() => {
-  void kernel.session.loadAll().catch(() => {})
+  void (async () => {
+    await kernel.session.loadAll().catch(() => {})
+    // 首次使用引导：没有任何会话时自动创建一个（否则输入问题后发送会因无可归属会话而不显示）
+    if (kernel.session.state.sessions.length === 0) {
+      await kernel.session.create().catch(() => {})
+    }
+  })()
   // 自愈兜底：若首屏加载后会话列表仍为空，稍后自动重试，避免“刷新后侧栏消失”
   fallbackTimer = window.setTimeout(() => {
     if (kernel.session.state.sessions.length === 0 && !kernel.session.state.loading) {
@@ -121,8 +127,14 @@ const themeOptions = [
 
         <div class="actions">
           <el-button-group>
-            <el-button size="small" :icon="'Plus'" @click="onNewSession">{{ t('chat.newSession') }}</el-button>
-            <el-button size="small" :icon="'Setting'" @click="openSettings">{{ t('chat.settings') }}</el-button>
+            <el-button size="small" class="act-btn" @click="onNewSession">
+              <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
+              {{ t('chat.newSession') }}
+            </el-button>
+            <el-button size="small" class="act-btn" @click="openSettings">
+              <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z" fill="none" stroke="currentColor" stroke-width="1.4" /><path d="M8 1.5v2M8 12.5v2M2.1 4.2l1.7 1M12.2 10.8l1.7 1M1.5 8h2M12.5 8h2M2.1 11.8l1.7-1M12.2 5.2l1.7-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" /></svg>
+              {{ t('chat.settings') }}
+            </el-button>
           </el-button-group>
 
           <el-tooltip :content="t('chat.threeD')" placement="bottom">
@@ -215,5 +227,18 @@ const themeOptions = [
   background: var(--nc-primary);
   color: #04121f;
   font-weight: 700;
+}
+
+.act-btn .btn-ico {
+  width: 13px;
+  height: 13px;
+  margin-right: 4px;
+  vertical-align: -2px;
+  flex-shrink: 0;
+}
+
+.act-btn {
+  display: inline-flex;
+  align-items: center;
 }
 </style>

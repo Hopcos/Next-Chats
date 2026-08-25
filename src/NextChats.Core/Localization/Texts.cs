@@ -87,6 +87,13 @@ public static class Texts
 
         // ---------- 默认系统提示 / 模板变量 ----------
         ["DEFAULT_SYSTEM"] = ("You are a helpful AI assistant. Use the context and available tools to answer the user's questions as best you can.", "你是一个乐于助人的 AI 助手。请基于上下文与可用的工具，尽你所能回答用户的问题。"),
+        ["MCP_INSTRUCTIONS_HEADER"] = ("System-level usage guides provided by the connected MCP servers (follow them when using these servers' tools):", "以下为已连接 MCP 服务器提供的系统级使用指南（使用对应服务器工具时请遵循）："),
+        ["HTTP_FETCH_BAD_URL"] = ("http_fetch: invalid or unsupported URL (http/https required)", "http_fetch：URL 无效或不支持（仅允许 http/https）"),
+        ["HTTP_FETCH_DENIED"] = ("http_fetch: host '{0}' is not in the allowed list (github.com / raw.githubusercontent.com by default). Try an allowed host or ask the user to add it to configuration.", "http_fetch：域名 {0} 不在白名单（默认仅 github.com / raw.githubusercontent.com），请使用允许的域名，或联系管理员在配置中放行"),
+        ["HTTP_FETCH_HTTP"] = ("http_fetch: the server responded HTTP {0}", "http_fetch：服务器返回 HTTP {0}"),
+        ["HTTP_FETCH_TOO_LARGE"] = ("http_fetch: response too large (over ~{0} MB), try a smaller/raw endpoint", "http_fetch：响应体过大（超过约 {0} MB），请尝试更小或 raw 格式的地址"),
+        ["HTTP_FETCH_NETWORK"] = ("http_fetch: network error while fetching the URL", "http_fetch：抓取该地址时发生网络错误"),
+        ["HTTP_FETCH_TIMEOUT"] = ("http_fetch: fetch timed out", "http_fetch：抓取超时"),
         ["USER_DISPLAY_FALLBACK"] = ("User", "用户"),
         ["TOOLS_NONE"] = ("(no tools available)", "（当前无可用工具）"),
         ["SKILLS_NONE"] = ("(none)", "（无）"),
@@ -97,6 +104,15 @@ public static class Texts
         ["SKILL_DESC_FALLBACK"] = ("{0} skill", "{0} 技能"),
         ["SKILL_NO_OUTPUT"] = ("(no output)", "(无输出)"),
         ["SKILL_LLM_UNAVAILABLE"] = ("LLM temporarily unavailable, skill execution failed", "LLM 暂不可用，技能执行失败"),
+        ["MCP_IMAGE_CONTENT"] = ("[image content]", "[图片内容]"),
+        ["MCP_AUDIO_CONTENT"] = ("[audio content]", "[音频内容]"),
+        ["MCP_BLOB_CONTENT"] = ("[binary content]", "[二进制内容]"),
+        ["MCP_CONTENT_PLACEHOLDER"] = ("[content]", "[内容]"),
+        ["MCP_RESOURCES_NONE"] = ("(this server exposes no resources)", "（该服务器未暴露资源）"),
+        ["MCP_RESOURCE_READ_FAILED"] = ("Failed to read resource '{0}' from MCP server '{1}'", "从 MCP 服务器「{1}」读取资源「{0}」失败"),
+        ["MCP_PROMPT_NOT_FOUND"] = ("Prompt '{0}' not found on server '{1}' (or the server rejected the arguments)", "服务器「{1}」上找不到 Prompt「{0}」（或参数被拒绝）"),
+        ["MCP_PROMPT_NEED_NAME"] = ("mcp_prompt: 'name' is required", "mcp_prompt：必须提供 name 参数"),
+        ["MCP_RESOURCE_NEED_URI"] = ("mcp_read_resource: 'uri' is required", "mcp_read_resource：必须提供 uri 参数"),
 
         // ---------- Mock 演示模型输出（用户可见正文） ----------
         ["MOCK_TITLE"] = ("(Mock streaming demo · no external model called)", "（Mock 流式演示 · 未调用外部模型）"),

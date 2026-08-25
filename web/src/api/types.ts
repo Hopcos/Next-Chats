@@ -63,6 +63,7 @@ export interface McpServerDto {
   isVision: boolean
   timeoutSeconds: number
   description?: string
+  instructions?: string
   metadataJson?: string
   lastError?: string
   lastFetchedAt?: string

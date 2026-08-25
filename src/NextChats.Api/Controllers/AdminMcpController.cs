@@ -25,7 +25,7 @@ public sealed class AdminMcpController(IAdminStore store, IMcpDriver driver, ISe
         {
             m.Id, m.Name, transport = m.Transport.ToString(), endpoint = LogSanitizer.MaskUri(m.Endpoint),
             headersMasked = m.IsHeadersEncrypted ? LogSanitizer.MaskHeaders(security.DecryptSecret(m.HeadersJson!)) : LogSanitizer.MaskHeaders(m.HeadersJson),
-            m.Enabled, m.IsVision, m.TimeoutSeconds, m.Description, m.MetadataJson, m.LastError, m.LastFetchedAt,
+            m.Enabled, m.IsVision, m.TimeoutSeconds, m.Description, m.Instructions, m.MetadataJson, m.LastError, m.LastFetchedAt,
             toolCount = m.Items.Count(i => i.Kind == McpItemKind.Tool),
             promptCount = m.Items.Count(i => i.Kind == McpItemKind.Prompt),
             resourceCount = m.Items.Count(i => i.Kind == McpItemKind.Resource),
@@ -42,7 +42,7 @@ public sealed class AdminMcpController(IAdminStore store, IMcpDriver driver, ISe
         {
             m.Id, m.Name, transport = m.Transport.ToString(), endpoint = LogSanitizer.MaskUri(m.Endpoint),
             headersMasked = m.IsHeadersEncrypted ? LogSanitizer.MaskHeaders(security.DecryptSecret(m.HeadersJson!)) : LogSanitizer.MaskHeaders(m.HeadersJson),
-            m.Enabled, m.IsVision, m.TimeoutSeconds, m.Description, m.MetadataJson, m.LastError, m.LastFetchedAt,
+            m.Enabled, m.IsVision, m.TimeoutSeconds, m.Description, m.Instructions, m.MetadataJson, m.LastError, m.LastFetchedAt,
             m.StdioCommand, m.StdioArgsJson,
             items = m.Items.Select(ItemDto).ToList(),
         });
@@ -50,7 +50,7 @@ public sealed class AdminMcpController(IAdminStore store, IMcpDriver driver, ISe
 
     public sealed record McpInput(
         string Name, string Transport, string? Endpoint, string? HeadersJson, bool Enabled, bool? IsVision,
-        int? TimeoutSeconds, string? StdioCommand, string? StdioArgsJson);
+        int? TimeoutSeconds, string? StdioCommand, string? StdioArgsJson, string? Instructions = null);
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] McpInput input)
@@ -66,6 +66,7 @@ public sealed class AdminMcpController(IAdminStore store, IMcpDriver driver, ISe
             TimeoutSeconds = input.TimeoutSeconds ?? 60,
             StdioCommand = input.StdioCommand,
             StdioArgsJson = input.StdioArgsJson,
+            Instructions = string.IsNullOrWhiteSpace(input.Instructions) ? null : input.Instructions.Trim(),
         };
         EncryptHeaders(server, input.HeadersJson);
         var saved = await store.CreateMcpServerAsync(server);
@@ -89,6 +90,8 @@ public sealed class AdminMcpController(IAdminStore store, IMcpDriver driver, ISe
         row.TimeoutSeconds = input.TimeoutSeconds ?? 60;
         row.StdioCommand = input.StdioCommand;
         row.StdioArgsJson = input.StdioArgsJson;
+        if (!string.IsNullOrWhiteSpace(input.Instructions)) row.Instructions = input.Instructions.Trim();
+        else if (input.Instructions is not null) row.Instructions = null; // 显式清空
         await store.UpdateMcpServerAsync(row);
         await driver.InvalidateAsync(id);
         await config.InvalidateConfigCacheAsync();
@@ -131,6 +134,8 @@ public sealed class AdminMcpController(IAdminStore store, IMcpDriver driver, ISe
             server.LastFetchedAt = DateTimeOffset.UtcNow;
             server.LastError = null;
             if (!string.IsNullOrWhiteSpace(result.Description)) server.Description = result.Description;
+            // 服务器 Instructions（系统级使用指南）：获取后自动回填（仍可手工编辑覆盖）
+            if (!string.IsNullOrWhiteSpace(result.Instructions)) server.Instructions = result.Instructions.Trim();
 
             await store.SyncMcpCatalogAsync(id, result.Items);
             await store.UpdateMcpServerAsync(server);
@@ -138,10 +143,10 @@ public sealed class AdminMcpController(IAdminStore store, IMcpDriver driver, ISe
             await config.InvalidateConfigCacheAsync();
 
             await audit.RecordAsync(AuditCategory.Config, "MCP.FETCH", $"trc_{Guid.NewGuid():N}"[..24], UserId, server.Name,
-                detail: new { toolCount = result.Items.Count(i => i.Kind == McpItemKind.Tool), promptCount = result.Items.Count(i => i.Kind == McpItemKind.Prompt), resourceCount = result.Items.Count(i => i.Kind == McpItemKind.Resource) });
+                detail: new { toolCount = result.Items.Count(i => i.Kind == McpItemKind.Tool), promptCount = result.Items.Count(i => i.Kind == McpItemKind.Prompt), resourceCount = result.Items.Count(i => i.Kind == McpItemKind.Resource), hasInstructions = !string.IsNullOrWhiteSpace(result.Instructions) });
 
             var fresh = await store.GetMcpServerAsync(id, includeItems: true);
-            return Ok(new { ok = true, items = fresh!.Items.OrderBy(i => i.Kind).ThenBy(i => i.Name).Select(ItemDto).ToList() });
+            return Ok(new { ok = true, instructions = fresh!.Instructions, items = fresh.Items.OrderBy(i => i.Kind).ThenBy(i => i.Name).Select(ItemDto).ToList() });
         }
         catch (Exception ex)
         {

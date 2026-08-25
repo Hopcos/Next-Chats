@@ -28,6 +28,9 @@ function saveThinking() {
 
 const streaming = computed(() => kernel.chat.state.streaming)
 
+// 无当前会话时禁用输入并引导（首次使用兜底，与 ChatView 自动创建一致）
+const noSession = computed(() => !kernel.session.state.currentId)
+
 interface PendingImage {
   id: string
   fileName: string
@@ -127,12 +130,19 @@ function interrupt() {
         type="textarea"
         :rows="3"
         resize="none"
-        :placeholder="t('chat.inputPlaceholder')"
+        :placeholder="noSession ? t('chat.inputPlaceholderNoSession') : t('chat.inputPlaceholder')"
+        :disabled="noSession"
         @keydown="onKeydown"
       />
       <div class="bar-actions">
         <span class="nc-dim hint">
-          {{ t('chat.policyHint') }}
+          <template v-if="noSession">
+            <el-button size="small" text type="primary" @click="kernel.session.create()">＋ {{ t('chat.newSession') }}</el-button>
+            <span>{{ t('chat.policyHintNoSession') }}</span>
+          </template>
+          <template v-else>
+            {{ t('chat.policyHint') }}
+          </template>
           <template v-if="visionSupported">
             <el-tooltip :content="t('chat.imagePasteHint')" placement="top">
               <el-button text size="small" type="primary" @click="fileInput?.click()">🖼 {{ t('chat.uploadImage') }}</el-button>
@@ -154,7 +164,7 @@ function interrupt() {
           </span>
         </span>
         <el-button v-if="streaming" type="danger" plain @click="interrupt">■ {{ t('chat.interrupt') }}</el-button>
-        <el-button v-else type="primary" :disabled="!text.trim() && images.length === 0" @click="send">{{ t('chat.send') }}</el-button>
+        <el-button v-else type="primary" :disabled="noSession || (!text.trim() && images.length === 0)" @click="send">{{ t('chat.send') }}</el-button>
       </div>
     </div>
   </div>

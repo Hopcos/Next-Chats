@@ -150,6 +150,20 @@ public sealed class MockLlmClient : ILlmClient
                     case "delete_all":
                         args["confirm"] = true;
                         break;
+                    case "http_fetch":
+                        args["url"] = "https://raw.githubusercontent.com/Hopcos/next-chats/main/README.md";
+                        break;
+                    case "mcp_prompt":
+                        args["name"] = "code_review";
+                        args["server"] = "Vision";
+                        break;
+                    case "mcp_resources":
+                        args["server"] = "Vision";
+                        break;
+                    case "mcp_read_resource":
+                        args["uri"] = "vision://status";
+                        args["server"] = "Vision";
+                        break;
                     case "maybe_fail":
                         args["forceFail"] = true;
                         break;

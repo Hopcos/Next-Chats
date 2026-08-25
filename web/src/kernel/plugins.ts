@@ -657,6 +657,11 @@ export class ChatService extends Service {
         // 清空会让前一轮思考链从界面上"消失"（服务端也是聚合存储的，刷新后同样完整）
         pending.thinkingOpen = true
         break
+      case 'round_start':
+        // 每轮开始立即展开思考区：真实模型首 token（TTFT）可能长达数秒，
+        // 提前让“正在思考…”占位可见，避免用户以为没有响应
+        pending.thinkingOpen = true
+        break
       case 'thinking_delta':
         pending.reasoning += ev.text ?? ''
         break

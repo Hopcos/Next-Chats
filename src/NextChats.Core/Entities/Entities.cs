@@ -166,6 +166,9 @@ public class McpServer
     /// <summary>自动带出的服务器描述（获取后回填）</summary>
     [MaxLength(2048)] public string? Description { get; set; }
 
+    /// <summary>服务器提供的系统级使用指南（MCP 协议 instructions；“获取”后自动回填，可手工编辑；注入 LLM 系统提示供模型遵循）</summary>
+    [MaxLength(8192)] public string? Instructions { get; set; }
+
     /// <summary>自动带出的元数据缓存（JsonObject：capabilities / protocolVersion / tools/prompts/resources 摘要）</summary>
     public string? MetadataJson { get; set; }
 

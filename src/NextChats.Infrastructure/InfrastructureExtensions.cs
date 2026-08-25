@@ -83,6 +83,7 @@ public static class InfrastructureExtensions
         {
             await AddColumnIfMissingAsync(conn, "LlmModels", "ThinkingEffort", "INTEGER NOT NULL DEFAULT 0");
             await AddColumnIfMissingAsync(conn, "LlmProviders", "ThinkingParam", "TEXT NOT NULL DEFAULT 'None'");
+            await AddColumnIfMissingAsync(conn, "McpServers", "Instructions", "TEXT");
         }
         finally
         {

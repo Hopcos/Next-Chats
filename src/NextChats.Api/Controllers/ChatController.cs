@@ -91,7 +91,8 @@ public sealed class ChatController(
     [HttpPost("sessions")]
     public async Task<IActionResult> CreateSession([FromBody] CreateSessionRequest? req)
     {
-        var session = await chat.CreateSessionAsync(UserId, string.IsNullOrWhiteSpace(req?.Title) ? "新会话" : req.Title!);
+        // 默认标题留空：前端按用户语言显示 “未命名/Untitled”，且首条消息时自动以前文命名（避免硬编码中文“新会话”）
+        var session = await chat.CreateSessionAsync(UserId, req?.Title?.Trim() ?? "");
         await audit.RecordAsync(AuditCategory.Chat, "SESSION.CREATE", $"trc_{Guid.NewGuid():N}"[..24], UserId, session.Id.ToString());
         return Ok(session);
     }

@@ -25,6 +25,7 @@ const form = reactive({
   timeoutSeconds: 60,
   stdioCommand: '',
   stdioArgsJson: '',
+  instructions: '',
 })
 
 async function load() {
@@ -40,7 +41,7 @@ async function load() {
 
 function openCreate() {
   editingId.value = null
-  Object.assign(form, { name: '', transport: 'Http', endpoint: '', headersJson: '', enabled: true, isVision: false, timeoutSeconds: 60, stdioCommand: '', stdioArgsJson: '' })
+  Object.assign(form, { name: '', transport: 'Http', endpoint: '', headersJson: '', enabled: true, isVision: false, timeoutSeconds: 60, stdioCommand: '', stdioArgsJson: '', instructions: '' })
   dialogOpen.value = true
 }
 
@@ -49,6 +50,7 @@ function openEdit(row: McpServerDto) {
   Object.assign(form, {
     name: row.name, transport: row.transport, endpoint: row.endpoint ?? '', headersJson: '',
     enabled: row.enabled, isVision: row.isVision, timeoutSeconds: row.timeoutSeconds, stdioCommand: row.stdioCommand ?? '', stdioArgsJson: row.stdioArgsJson ?? '',
+    instructions: row.instructions ?? '',
   })
   dialogOpen.value = true
 }
@@ -60,6 +62,7 @@ async function save() {
     endpoint: form.endpoint || undefined,
     stdioCommand: form.stdioCommand || undefined,
     stdioArgsJson: form.stdioArgsJson || undefined,
+    instructions: form.instructions || undefined,
   }
   try {
     if (editingId.value) {
@@ -121,6 +124,43 @@ async function toggleServer(row: McpServerDto, enabled: boolean) {
     enabled, isVision: row.isVision, timeoutSeconds: row.timeoutSeconds,
   })
   await load()
+}
+
+/** dialog 内“获取”：新建模式先落库再拉取；成功后自动回填 instructions（服务器未提供则保留原值） */
+const dialogFetching = ref(false)
+
+async function fetchInDialog() {
+  if (!form.name.trim() || (form.transport === 'Http' && !form.endpoint.trim())) {
+    kernel.notify.warning(t('admin.mcp.fetchNeedBase'))
+    return
+  }
+  dialogFetching.value = true
+  try {
+    let id = editingId.value
+    if (!id) {
+      const created = await http.post<{ id?: string } | string>('/api/admin/mcp-servers', {
+        ...form,
+        headersJson: form.headersJson || undefined,
+        endpoint: form.endpoint || undefined,
+        stdioCommand: form.stdioCommand || undefined,
+        stdioArgsJson: form.stdioArgsJson || undefined,
+      })
+      id = typeof created === 'string' ? created : (created as { id: string }).id
+      editingId.value = id
+    }
+    const res = await http.post<{ ok: boolean; instructions?: string | null }>(`/api/admin/mcp-servers/${id}/fetch`, {})
+    if (res.instructions) {
+      form.instructions = res.instructions
+      kernel.notify.success(t('admin.mcp.instructionsFetched'))
+    } else {
+      kernel.notify.info(t('admin.mcp.instructionsEmpty'))
+    }
+    await load()
+  } catch (e) {
+    kernel.notify.error((e as { message?: string }).message ?? t('admin.mcp.fetchFailed'), (e as { code?: string }).code)
+  } finally {
+    dialogFetching.value = false
+  }
 }
 
 onMounted(load)
@@ -212,6 +252,14 @@ onMounted(load)
           <el-switch v-model="form.isVision" />
         </el-form-item>
         <el-form-item :label="t('common.enabled')"><el-switch v-model="form.enabled" /></el-form-item>
+        <el-form-item :label="t('admin.mcp.instructions')">
+          <div class="instr-wrap">
+            <el-input v-model="form.instructions" type="textarea" :rows="4" :placeholder="t('admin.mcp.instructionsPlaceholder')" />
+            <el-button class="instr-fetch" size="small" type="primary" plain :loading="dialogFetching" @click="fetchInDialog">
+              {{ t('admin.mcp.fetch') }}
+            </el-button>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogOpen = false">{{ t('common.cancel') }}</el-button>
@@ -237,5 +285,21 @@ onMounted(load)
   font-size: 12.5px;
   opacity: 0.75;
   margin-bottom: 8px;
+}
+
+.instr-wrap {
+  display: flex;
+  gap: 8px;
+  width: 100%;
+}
+
+.instr-wrap .el-input {
+  flex: 1;
+}
+
+.instr-fetch {
+  align-self: flex-start;
+  margin-top: 2px;
+  white-space: nowrap;
 }
 </style>

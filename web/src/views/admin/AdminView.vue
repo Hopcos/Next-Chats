@@ -1,8 +1,16 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 const route = useRoute()
 const router = useRouter()
+
+const collapsed = ref(localStorage.getItem('nextchats.admin.collapsed') === '1')
+
+function toggleCollapse() {
+  collapsed.value = !collapsed.value
+  localStorage.setItem('nextchats.admin.collapsed', collapsed.value ? '1' : '0')
+}
 
 const menus = [
   { path: '/admin/llm', labelKey: 'admin.menu.llm', icon: '🧠' },
@@ -23,21 +31,30 @@ function isActive(path: string) {
 
 <template>
   <div class="admin-layout">
-    <aside class="aside">
-      <div class="brand">Next Chats <span class="nc-dim">{{ $t('common.admin') }}</span></div>
+    <aside class="aside" :class="{ collapsed }">
+      <div class="brand">
+        <span v-if="!collapsed" class="brand-text">Next Chats <span class="nc-dim">{{ $t('common.admin') }}</span></span>
+        <span v-else class="brand-text brand-mini">NC</span>
+        <el-button class="collapse-btn" size="small" text :title="collapsed ? $t('admin.menu.expand') : $t('admin.menu.collapse')" @click="toggleCollapse">
+          {{ collapsed ? '⮞' : '⮜' }}
+        </el-button>
+      </div>
       <nav>
         <div
           v-for="m in menus"
           :key="m.path"
           class="menu-item"
           :class="{ active: isActive(m.path) }"
+          :title="collapsed ? $t(m.labelKey) : undefined"
           @click="router.push(m.path)"
         >
-          <span class="menu-icon">{{ m.icon }}</span>{{ $t(m.labelKey) }}
+          <span class="menu-icon">{{ m.icon }}</span><span v-if="!collapsed" class="menu-label">{{ $t(m.labelKey) }}</span>
         </div>
       </nav>
       <div class="back">
-        <el-button size="small" text @click="router.push('/')">{{ $t('admin.menu.back') }}</el-button>
+        <el-button size="small" text @click="router.push('/')">
+          <span v-if="!collapsed">{{ $t('admin.menu.back') }}</span><span v-else>🏠</span>
+        </el-button>
       </div>
     </aside>
     <main class="content nc-scroll">
@@ -60,12 +77,36 @@ function isActive(path: string) {
   display: flex;
   flex-direction: column;
   padding: 16px 10px;
+  transition: width 0.2s;
+}
+
+.aside.collapsed {
+  width: 52px;
+  padding: 16px 6px;
 }
 
 .brand {
   font-size: 18px;
   font-weight: 700;
   padding: 0 10px 16px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+}
+
+.brand-mini {
+  font-size: 14px;
+}
+
+.collapse-btn {
+  margin-left: auto;
+  color: var(--nc-text-dim);
+  font-size: 13px;
+}
+
+.aside.collapsed .collapse-btn {
+  margin-left: 0;
+  width: 100%;
 }
 
 .menu-item {
@@ -77,6 +118,16 @@ function isActive(path: string) {
   font-size: 13.5px;
   cursor: pointer;
   margin-bottom: 2px;
+}
+
+.aside.collapsed .menu-item {
+  justify-content: center;
+  padding: 9px 0;
+}
+
+.menu-label {
+  overflow: hidden;
+  white-space: nowrap;
 }
 
 .menu-item:hover {

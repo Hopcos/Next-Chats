@@ -50,6 +50,22 @@ public sealed class ContextOptions
     public int TruncateChunkMessages { get; set; } = 4;
 }
 
+/// <summary>内置工具（http_fetch 等）配置 —— HTTP 抓取默认仅放行白名单域名，防 SSRF</summary>
+public sealed class BuiltinToolOptions
+{
+    /// <summary>http_fetch 允许访问的域名（精确或子域后缀匹配；默认 GitHub 系，可自行增删）</summary>
+    public string[] HttpFetchAllowHosts { get; set; } = ["github.com", "raw.githubusercontent.com"];
+
+    /// <summary>响应体最大字节数（超出报“内容过大”，默认 2 MB）</summary>
+    public int HttpFetchMaxBytes { get; set; } = 2_000_000;
+
+    /// <summary>返回给模型的文本最大字符数（超出截断；http_fetch 与 mcp_read_resource 共用）</summary>
+    public int HttpFetchMaxChars { get; set; } = 40_000;
+
+    /// <summary>单次抓取超时（秒）</summary>
+    public int HttpFetchTimeoutSeconds { get; set; } = 12;
+}
+
 /// <summary>安全配置</summary>
 public sealed class SecurityOptions
 {

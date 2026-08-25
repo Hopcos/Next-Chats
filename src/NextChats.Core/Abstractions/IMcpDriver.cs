@@ -21,9 +21,10 @@ public sealed record McpToolResult(
     int Attempts,
     bool Retryable = false); // 是否可重试（连接/超时类瞬时错误 true；业务错误 false）
 
-/// <summary>MCP 自动带出元数据</summary>
+/// <summary>MCP 自动带出元数据（description / instructions / tools / prompts / resources）</summary>
 public sealed record McpDiscoverResult(
     string? Description,
+    string? Instructions,
     IReadOnlyList<McpCatalogItem> Items);
 
 /// <summary>
@@ -43,6 +44,12 @@ public interface IMcpDriver
 
     /// <summary>获取 Prompt（供个人设置查看能力摘要）</summary>
     Task<string?> GetPromptAsync(McpServer server, string promptName, string? argumentsJson, CancellationToken ct);
+
+    /// <summary>列出服务器可用资源（静态资源 + 模板摘要；mcp_resources 内置工具）</summary>
+    Task<string> ListResourcesAsync(McpServer server, CancellationToken ct);
+
+    /// <summary>读取资源内容为文本（mcp_read_resource 内置工具）；失败返回 null</summary>
+    Task<string?> ReadResourceAsync(McpServer server, string uri, CancellationToken ct);
 
     Task<(bool Ok, string? Error, int LatencyMs)> PingAsync(McpServer server, CancellationToken ct);
 

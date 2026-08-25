@@ -216,6 +216,7 @@ function prettyArgs(raw?: string): string {
         </div>
         <div class="think-body-wrap" :class="{ collapsed: !thinkingOpen && !message.thinkingOpen }">
           <div v-if="message.reasoning" ref="thinkBodyRef" class="think-body">{{ message.reasoning.slice(0, thinkShown) }}</div>
+          <div v-else-if="thinkingOpen || message.thinkingOpen" class="think-body nc-dim think-wait">{{ t('chat.thinkingWait') }}</div>
         </div>
         <ToolCard v-for="tCard in message.tools" :key="tCard.key" :card="tCard" />
         <div v-for="(note, i) in message.contextNotes" :key="'n' + i" class="context-note nc-dim">

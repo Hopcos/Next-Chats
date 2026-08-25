@@ -297,6 +297,9 @@ public sealed class McpDriver : IMcpDriver
         var client = await GetConnectionAsync(server, ct).ConfigureAwait(false);
         var items = new List<McpCatalogItem>();
 
+        // 服务器级 Instructions（MCP 协议：initialize 结果携带；作为系统级使用指南注入 LLM system）
+        var instructions = TryGetInstructionsAsync(client);
+
         // 工具列表是发现的基石：连不上/拿不到 → 整体失败（控制器友好报错）
         var tools = await client.ListToolsAsync((RequestOptions?)null, ct).ConfigureAwait(false);
         foreach (var tool in tools)
@@ -367,7 +370,20 @@ public sealed class McpDriver : IMcpDriver
             });
         }
 
-        return new McpDiscoverResult(server.Description, items);
+        return new McpDiscoverResult(server.Description, instructions, items);
+    }
+
+    /// <summary>读取服务器 Instructions（initialize 结果，SDK 暴露为 McpClient.ServerInstructions）</summary>
+    private static string? TryGetInstructionsAsync(McpClient client)
+    {
+        try
+        {
+            return client.ServerInstructions;
+        }
+        catch
+        {
+            return null;
+        }
     }
 
     /// <summary>MCP 协议方法不可用（如 prompts/list 未实现）→ 返回空列表；其它异常向上抛</summary>
@@ -403,6 +419,55 @@ public sealed class McpDriver : IMcpDriver
                 _ => Texts.Get("MCP_CONTENT_PLACEHOLDER", "en"),
             };
             sb.AppendLine($"{pm.Role}: {text}");
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    public async Task<string> ListResourcesAsync(McpServer server, CancellationToken ct)
+    {
+        var client = await GetConnectionAsync(server, ct).ConfigureAwait(false);
+        var sb = new System.Text.StringBuilder();
+        var resources = await TryListAsync(() => client.ListResourcesAsync((RequestOptions?)null, ct)).ConfigureAwait(false);
+        foreach (var r in resources)
+        {
+            sb.AppendLine($"- uri: {r.Uri} | name: {r.Name ?? "-"} | type: {r.MimeType ?? "-"} | desc: {r.Description ?? r.Title ?? "-"}");
+        }
+        var templates = await TryListAsync(() => client.ListResourceTemplatesAsync((RequestOptions?)null, ct)).ConfigureAwait(false);
+        foreach (var tpl in templates)
+        {
+            sb.AppendLine($"- uriTemplate: {tpl.UriTemplate} | name: {tpl.Name ?? "-"} | desc: {tpl.Description ?? tpl.Title ?? "-"}");
+        }
+        return sb.ToString().TrimEnd();
+    }
+
+    public async Task<string?> ReadResourceAsync(McpServer server, string uri, CancellationToken ct)
+    {
+        var client = await GetConnectionAsync(server, ct).ConfigureAwait(false);
+        var result = await client.ReadResourceAsync(uri, (RequestOptions?)null, ct).ConfigureAwait(false);
+        var sb = new System.Text.StringBuilder();
+        foreach (var content in result.Contents)
+        {
+            switch (content)
+            {
+                case TextResourceContents text when !string.IsNullOrEmpty(text.Text):
+                    sb.AppendLine(text.Text);
+                    break;
+                case BlobResourceContents blob:
+                    var mime = blob.MimeType ?? "application/octet-stream";
+                    if (mime.StartsWith("text/", StringComparison.OrdinalIgnoreCase)
+                        || mime is "application/json" or "application/xml" or "application/javascript")
+                    {
+                        sb.AppendLine(System.Text.Encoding.UTF8.GetString(blob.Blob.Span));
+                    }
+                    else
+                    {
+                        sb.AppendLine(Texts.Get("MCP_BLOB_CONTENT", "en"));
+                    }
+                    break;
+                default:
+                    sb.AppendLine(Texts.Get("MCP_BLOB_CONTENT", "en"));
+                    break;
+            }
         }
         return sb.ToString().TrimEnd();
     }

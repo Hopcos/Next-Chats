@@ -31,6 +31,28 @@ public sealed class ChatOrchestrator : IChatOrchestrator
     private static readonly decimal PricePer1KInput = 0.0005m;   // 默认 $0.5/M（可通过 provider.ExtraJson 覆盖）
     private static readonly decimal PricePer1KOutput = 0.0015m;
 
+    /// <summary>内置 http_fetch 工具声明（无需 MCP 服务器，白名单域名 GET 抓取文本）</summary>
+    private const string HttpFetchSchemaJson =
+        """{"type":"object","properties":{"url":{"type":"string","description":"Absolute http(s) URL to fetch (allowlisted hosts only, e.g. https://raw.githubusercontent.com/owner/repo/main/README.md)"}},"required":["url"]}""";
+
+    /// <summary>内置 mcp_prompt：从 MCP 服务器取 Prompt 模板（渲染为 role: text 文本）</summary>
+    private const string McpPromptSchemaJson =
+        """{"type":"object","properties":{"name":{"type":"string","description":"Prompt name exposed by the MCP server (see the admin catalog)"},"server":{"type":"string","description":"Optional MCP server name; omit to search all bound servers"},"arguments":{"type":"object","description":"Optional template arguments as a JSON object"}},"required":["name"]}""";
+
+    /// <summary>内置 mcp_resources：列出绑定服务器的可用资源（静态资源 + 模板）</summary>
+    private const string McpResourcesSchemaJson =
+        """{"type":"object","properties":{"server":{"type":"string","description":"Optional MCP server name; omit to list from all bound servers"}},"required":[]}""";
+
+    /// <summary>内置 mcp_read_resource：读取资源内容为文本</summary>
+    private const string McpReadResourceSchemaJson =
+        """{"type":"object","properties":{"uri":{"type":"string","description":"Resource URI (from the mcp_resources listing)"},"server":{"type":"string","description":"Optional MCP server name; omit to try all bound servers"}},"required":["uri"]}""";
+
+    private const string BuiltinToolServer = "system";
+    private const string HttpFetchToolName = "http_fetch";
+    private const string McpPromptToolName = "mcp_prompt";
+    private const string McpResourcesToolName = "mcp_resources";
+    private const string McpReadResourceToolName = "mcp_read_resource";
+
     private readonly IConfigStore _config;
     private readonly IChatStore _chat;
     private readonly IMcpDriver _mcp;
@@ -42,7 +64,14 @@ public sealed class ChatOrchestrator : IChatOrchestrator
     private readonly ISessionCancellationRegistry _cancellations;
     private readonly ICacheService _cache;
     private readonly IOptions<SecurityOptions> _securityOptions;
+    private readonly IOptions<BuiltinToolOptions> _builtinOptions;
     private readonly ILogger _logger;
+
+    /// <summary>http_fetch 专用 HttpClient（禁用自动重定向 —— 手动跟随并逐跳校验白名单，防 SSRF）</summary>
+    private static readonly HttpClient FetchHttp = new(new SocketsHttpHandler { AllowAutoRedirect = false, ConnectTimeout = TimeSpan.FromSeconds(8) })
+    {
+        Timeout = TimeSpan.FromSeconds(30),
+    };
 
     public ChatOrchestrator(
         IConfigStore config,
@@ -56,6 +85,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         ISessionCancellationRegistry cancellations,
         ICacheService cache,
         IOptions<SecurityOptions> securityOptions,
+        IOptions<BuiltinToolOptions> builtinOptions,
         ILogger<ChatOrchestrator> logger)
     {
         _config = config;
@@ -69,6 +99,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         _cancellations = cancellations;
         _cache = cache;
         _securityOptions = securityOptions;
+        _builtinOptions = builtinOptions;
         _logger = logger;
     }
 
@@ -199,6 +230,31 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         }
         var skillByName = enabledSkills.ToDictionary(s => s.MetaToolName, StringComparer.OrdinalIgnoreCase);
 
+        // ---------- 内置工具：http_fetch（白名单域名 GET 抓取） ----------
+        unifiedTools.Add(new UnifiedTool(
+            BuiltinToolServer, HttpFetchToolName,
+            "Fetch a web page or raw text file over HTTP(S) GET and return its text content (size-limited). " +
+            "Use it to read web pages, README.md, raw files such as https://raw.githubusercontent.com/owner/repo/main/README.md. " +
+            "Only allowlisted hosts are reachable (github.com / raw.githubusercontent.com by default).",
+            HttpFetchSchemaJson, IsSkill: false));
+
+        // ---------- 内置工具：mcp_prompt / mcp_resources / mcp_read_resource（MCP Prompt 与 Resource 按需取用） ----------
+        unifiedTools.Add(new UnifiedTool(
+            BuiltinToolServer, McpPromptToolName,
+            "Retrieve a prompt template from an MCP server, rendered into role/text content. " +
+            "Use when an MCP server exposes reusable prompts (see the admin catalog) and you need their template/instructions to act on them.",
+            McpPromptSchemaJson, IsSkill: false));
+        unifiedTools.Add(new UnifiedTool(
+            BuiltinToolServer, McpResourcesToolName,
+            "List resources (static resources and templates) exposed by the bound MCP servers, with their URIs. " +
+            "Call this first to discover what can be read, then use mcp_read_resource to fetch content.",
+            McpResourcesSchemaJson, IsSkill: false));
+        unifiedTools.Add(new UnifiedTool(
+            BuiltinToolServer, McpReadResourceToolName,
+            "Read an MCP resource by URI and return its text content (size-limited). " +
+            "Use a URI obtained from mcp_resources. Binary/image resources return a placeholder.",
+            McpReadResourceSchemaJson, IsSkill: false));
+
         // ---------- MCP 视觉：多张逐个识别为文本（工具参数名 image_source = 标准 base64） ----------
         var visionLines = new List<string>();
         if (request.Images is { Count: > 0 })
@@ -298,6 +354,16 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         if (systemBlocks.Count == 0)
         {
             systemBlocks.Add(Texts.Get("DEFAULT_SYSTEM", lang));
+        }
+
+        // ---------- MCP 服务器系统级使用指南（Instructions）注入 ----------
+        var mcpGuides = servers
+            .Where(s => s.Enabled && !string.IsNullOrWhiteSpace(s.Instructions))
+            .Select(s => $"- {s.Name}: {s.Instructions!.Trim()}")
+            .ToList();
+        if (mcpGuides.Count > 0)
+        {
+            systemBlocks.Add(Texts.Get("MCP_INSTRUCTIONS_HEADER", lang) + "\n" + string.Join("\n", mcpGuides));
         }
         var systemPrompt = string.Join("\n\n---\n\n", systemBlocks);
 
@@ -461,7 +527,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             ct: ct);
     }
 
-    /// <summary>统一工具执行器：Skill 元工具 → SkillExecutionEngine；MCP 工具 → IMcpDriver</summary>
+    /// <summary>统一工具执行器：Skill 元工具 → SkillExecutionEngine；MCP 工具 → IMcpDriver；内置工具 → 本地执行器</summary>
     private async Task<McpToolResult> ExecuteToolAsync(UnifiedTool tool, string? args, string traceId, CancellationToken ct,
         IReadOnlyList<McpServer> servers, Dictionary<string, Skill> skillByName, string lang)
     {
@@ -476,12 +542,291 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             return new McpToolResult(ok, result, error, ok ? null : "SKILL_ERROR", 0, 1);
         }
 
+        if (tool.ServerName == BuiltinToolServer)
+        {
+            return tool.Name switch
+            {
+                HttpFetchToolName => await ExecuteHttpFetchAsync(args, traceId, lang, ct),
+                McpPromptToolName => await ExecuteMcpPromptAsync(args, servers, traceId, lang, ct),
+                McpResourcesToolName => await ExecuteMcpResourcesAsync(args, servers, traceId, lang, ct),
+                McpReadResourceToolName => await ExecuteMcpReadResourceAsync(args, servers, traceId, lang, ct),
+                _ => new McpToolResult(false, "", Texts.Get("TOOL_NOT_FOUND", lang, tool.Name), "TOOL_NOT_FOUND", 0, 1),
+            };
+        }
+
         var server = servers.FirstOrDefault(s => s.Name == tool.ServerName);
         if (server is null)
         {
             return new McpToolResult(false, "", Texts.Get("MCP_SERVER_NOT_FOUND", lang), "SERVER_NOT_FOUND", 0, 1);
         }
         return await _mcp.CallToolAsync(server, tool.Name, args, traceId, lang, ct);
+    }
+
+    // ================= 内置 MCP Prompt / Resource 工具 =================
+
+    /// <summary>按 server 参数选取候选服务器：缺省 → 全部绑定服务器（按序尝试）；指定 → 全名精确匹配（忽略大小写）</summary>
+    private static (IReadOnlyList<McpServer> Candidates, string? ErrorKey) PickMcpServers(
+        IReadOnlyList<McpServer> servers, string? serverName, string lang)
+    {
+        if (string.IsNullOrWhiteSpace(serverName)) return (servers, null);
+        var hit = servers.FirstOrDefault(s => s.Name.Equals(serverName.Trim(), StringComparison.OrdinalIgnoreCase));
+        if (hit is null)
+        {
+            return ([], Texts.Get("MCP_SERVER_NOT_FOUND", lang));
+        }
+        return ([hit], null);
+    }
+
+    /// <summary>解析内置工具参数 JSON（name / server / uri / arguments）</summary>
+    private static (string? Name, string? Server, string? Uri, string? ArgumentsJson) ParseMcpToolArgs(string? args)
+    {
+        string? name = null, server = null, uri = null, argumentsJson = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(args ?? "{}");
+            var root = doc.RootElement;
+            if (root.ValueKind != JsonValueKind.Object) return (null, null, null, null);
+            if (root.TryGetProperty("name", out var n)) name = n.GetString();
+            if (root.TryGetProperty("server", out var s)) server = s.GetString();
+            if (root.TryGetProperty("uri", out var u)) uri = u.GetString();
+            if (root.TryGetProperty("arguments", out var a) && a.ValueKind == JsonValueKind.Object) argumentsJson = a.GetRawText();
+        }
+        catch (JsonException)
+        {
+            // 参数解析失败 → 按缺失处理，由各执行器给出友好错误
+        }
+        return (name, server, uri, argumentsJson);
+    }
+
+    private async Task<McpToolResult> ExecuteMcpPromptAsync(string? args, IReadOnlyList<McpServer> servers, string traceId, string lang, CancellationToken ct)
+    {
+        var (name, serverName, _, argumentsJson) = ParseMcpToolArgs(args);
+        if (string.IsNullOrWhiteSpace(name))
+        {
+            return new McpToolResult(false, "", Texts.Get("MCP_PROMPT_NEED_NAME", lang), "MCP_PROMPT_NEED_NAME", 0, 1);
+        }
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var (candidates, errKey) = PickMcpServers(servers, serverName, lang);
+        if (errKey is not null) return new McpToolResult(false, "", errKey, "MCP_SERVER_NOT_FOUND", 0, 1);
+        foreach (var s in candidates)
+        {
+            try
+            {
+                var text = await _mcp.GetPromptAsync(s, name, argumentsJson, ct).ConfigureAwait(false);
+                if (text is not null)
+                {
+                    sw.Stop();
+                    return new McpToolResult(true, $"[{s.Name}]\n{text}", null, null, (int)sw.ElapsedMilliseconds, 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "mcp_prompt 失败 trace={Trace} server={Server} prompt={Prompt}", traceId, s.Name, name);
+            }
+        }
+        sw.Stop();
+        var target = candidates.Count == 1 ? candidates[0].Name : string.Join("/", candidates.Select(c => c.Name));
+        return new McpToolResult(false, "", Texts.Get("MCP_PROMPT_NOT_FOUND", lang, name, target), "MCP_PROMPT_NOT_FOUND", (int)sw.ElapsedMilliseconds, 1);
+    }
+
+    private async Task<McpToolResult> ExecuteMcpResourcesAsync(string? args, IReadOnlyList<McpServer> servers, string traceId, string lang, CancellationToken ct)
+    {
+        var (_, serverName, _, _) = ParseMcpToolArgs(args);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var (candidates, errKey) = PickMcpServers(servers, serverName, lang);
+        if (errKey is not null) return new McpToolResult(false, "", errKey, "MCP_SERVER_NOT_FOUND", 0, 1);
+        var sb = new System.Text.StringBuilder();
+        foreach (var s in candidates)
+        {
+            try
+            {
+                var listing = await _mcp.ListResourcesAsync(s, ct).ConfigureAwait(false);
+                sb.AppendLine($"## {s.Name}");
+                sb.AppendLine(string.IsNullOrWhiteSpace(listing) ? Texts.Get("MCP_RESOURCES_NONE", lang) : listing);
+            }
+            catch (Exception ex)
+            {
+                _logger.LogWarning(ex, "mcp_resources 失败 trace={Trace} server={Server}", traceId, s.Name);
+                sb.AppendLine($"## {s.Name}\n(error: {ex.Message})");
+            }
+        }
+        sw.Stop();
+        return new McpToolResult(true, sb.ToString().TrimEnd(), null, null, (int)sw.ElapsedMilliseconds, 1);
+    }
+
+    private async Task<McpToolResult> ExecuteMcpReadResourceAsync(string? args, IReadOnlyList<McpServer> servers, string traceId, string lang, CancellationToken ct)
+    {
+        var (_, serverName, uri, _) = ParseMcpToolArgs(args);
+        if (string.IsNullOrWhiteSpace(uri))
+        {
+            return new McpToolResult(false, "", Texts.Get("MCP_RESOURCE_NEED_URI", lang), "MCP_RESOURCE_NEED_URI", 0, 1);
+        }
+        var maxChars = Math.Max(2_000, _builtinOptions.Value.HttpFetchMaxChars);
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        var (candidates, errKey) = PickMcpServers(servers, serverName, lang);
+        if (errKey is not null) return new McpToolResult(false, "", errKey, "MCP_SERVER_NOT_FOUND", 0, 1);
+        string? lastError = null;
+        foreach (var s in candidates)
+        {
+            try
+            {
+                var text = await _mcp.ReadResourceAsync(s, uri, ct).ConfigureAwait(false);
+                if (text is not null)
+                {
+                    sw.Stop();
+                    if (text.Length > maxChars) text = text[..maxChars];
+                    return new McpToolResult(true, $"[{s.Name}]\n{text}", null, null, (int)sw.ElapsedMilliseconds, 1);
+                }
+            }
+            catch (Exception ex)
+            {
+                lastError = ex.Message;
+                _logger.LogWarning(ex, "mcp_read_resource 失败 trace={Trace} server={Server} uri={Uri}", traceId, s.Name, uri);
+            }
+        }
+        sw.Stop();
+        var target = candidates.Count == 1 ? candidates[0].Name : string.Join("/", candidates.Select(c => c.Name));
+        return new McpToolResult(false, lastError ?? "", Texts.Get("MCP_RESOURCE_READ_FAILED", lang, uri, target), "MCP_RESOURCE_READ_FAILED", (int)sw.ElapsedMilliseconds, 1);
+    }
+
+    // ================= 内置 http_fetch =================
+
+    private async Task<McpToolResult> ExecuteHttpFetchAsync(string? args, string traceId, string lang, CancellationToken ct)
+    {
+        var sw = System.Diagnostics.Stopwatch.StartNew();
+        string? url = null;
+        try
+        {
+            using var doc = JsonDocument.Parse(args ?? "{}");
+            if (doc.RootElement.ValueKind == JsonValueKind.Object && doc.RootElement.TryGetProperty("url", out var u))
+            {
+                url = u.GetString();
+            }
+        }
+        catch (JsonException) { /* 参数解析失败 → 按无效 URL 处理 */ }
+
+        var opts = _builtinOptions.Value;
+        if (string.IsNullOrWhiteSpace(url)
+            || !Uri.TryCreate(url.Trim(), UriKind.Absolute, out var uri)
+            || (uri.Scheme != Uri.UriSchemeHttp && uri.Scheme != Uri.UriSchemeHttps))
+        {
+            return new McpToolResult(false, "", Texts.Get("HTTP_FETCH_BAD_URL", lang), "HTTP_FETCH_BAD_URL", 0, 1);
+        }
+        if (!HostAllowed(uri.Host, opts))
+        {
+            _logger.LogWarning("http_fetch 域名不在白名单 trace={Trace} host={Host}", traceId, uri.Host);
+            return new McpToolResult(false, "", Texts.Get("HTTP_FETCH_DENIED", lang, uri.Host), "HTTP_FETCH_DENIED", 0, 1);
+        }
+
+        try
+        {
+            using var cts = CancellationTokenSource.CreateLinkedTokenSource(ct);
+            cts.CancelAfter(TimeSpan.FromSeconds(Math.Max(5, opts.HttpFetchTimeoutSeconds)));
+
+            var resp = await FetchHttp.GetAsync(uri, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            // 手动跟随重定向（最多 3 跳，逐跳校验白名单，防 SSRF 跳转内网）
+            for (var hop = 0; hop < 3 && (int)resp.StatusCode is >= 300 and < 400; hop++)
+            {
+                var loc = resp.Headers.Location;
+                resp.Dispose();
+                if (loc is null) break;
+                var next = new Uri(uri, loc);
+                if (!HostAllowed(next.Host, opts))
+                {
+                    return new McpToolResult(false, "", Texts.Get("HTTP_FETCH_DENIED", lang, next.Host), "HTTP_FETCH_DENIED", 0, 1);
+                }
+                uri = next;
+                resp = await FetchHttp.GetAsync(next, HttpCompletionOption.ResponseHeadersRead, cts.Token);
+            }
+
+            if (!resp.IsSuccessStatusCode)
+            {
+                var code = (int)resp.StatusCode;
+                resp.Dispose();
+                sw.Stop();
+                return new McpToolResult(false, "", Texts.Get("HTTP_FETCH_HTTP", lang, code), "HTTP_FETCH_HTTP", (int)sw.ElapsedMilliseconds, 1);
+            }
+
+            var mediaType = resp.Content.Headers.ContentType?.MediaType ?? "";
+            using var ms = new MemoryStream();
+            await resp.Content.CopyToAsync(ms, cts.Token);
+            resp.Dispose();
+            sw.Stop();
+            var latency = (int)sw.ElapsedMilliseconds;
+
+            if (ms.Length > opts.HttpFetchMaxBytes)
+            {
+                return new McpToolResult(false, "", Texts.Get("HTTP_FETCH_TOO_LARGE", lang, ms.Length / 1024 / 1024), "HTTP_FETCH_TOO_LARGE", latency, 1);
+            }
+
+            var text = DecodeFetchText(ms.ToArray(), mediaType);
+            if (text.Length > opts.HttpFetchMaxChars)
+            {
+                text = text[..opts.HttpFetchMaxChars];
+            }
+            return new McpToolResult(true, text, null, null, latency, 1);
+        }
+        catch (OperationCanceledException) when (!ct.IsCancellationRequested)
+        {
+            return new McpToolResult(false, "", Texts.Get("MCP_TIMEOUT", lang), "HTTP_FETCH_TIMEOUT", 0, 2);
+        }
+        catch (HttpRequestException ex)
+        {
+            _logger.LogWarning(ex, "http_fetch 网络失败 trace={Trace} host={Host}", traceId, uri.Host);
+            return new McpToolResult(false, "", Texts.Get("HTTP_FETCH_NETWORK", lang), "HTTP_FETCH_NETWORK", 0, 2);
+        }
+    }
+
+    /// <summary>白名单校验：host 精确等于白名单项，或以 . 前缀作为子域</summary>
+    private static bool HostAllowed(string host, BuiltinToolOptions opts)
+    {
+        foreach (var item in opts.HttpFetchAllowHosts)
+        {
+            var allow = item.Trim().TrimStart('*', '.').Trim().ToLowerInvariant();
+            if (string.IsNullOrEmpty(allow)) continue;
+            if (host.Equals(allow, StringComparison.OrdinalIgnoreCase)
+                || host.EndsWith("." + allow, StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    /// <summary>按 Content-Type 解码并去 HTML 标签：raw 文本原样返回，HTML 抽取可见文本</summary>
+    private static string DecodeFetchText(byte[] bytes, string? mediaType)
+    {
+        var isHtml = mediaType?.Contains("html", StringComparison.OrdinalIgnoreCase) == true;
+        string text;
+        try
+        {
+            text = System.Text.Encoding.UTF8.GetString(bytes);
+        }
+        catch
+        {
+            text = "";
+        }
+        if (!isHtml) return CleanControl(text);
+        // 去 script/style/注释 → 去标签 → 实体还原 → 压缩空白
+        text = System.Text.RegularExpressions.Regex.Replace(text,
+            "<(script|style|noscript)[\\s\\S]*?</\\1>", " ", System.Text.RegularExpressions.RegexOptions.IgnoreCase);
+        text = System.Text.RegularExpressions.Regex.Replace(text, "<!--[\\s\\S]*?-->", " ");
+        text = System.Text.RegularExpressions.Regex.Replace(text, "<[^>]+>", " ");
+        text = System.Net.WebUtility.HtmlDecode(text);
+        return CleanControl(text);
+    }
+
+    private static string CleanControl(string text)
+    {
+        var sb = new System.Text.StringBuilder(text.Length);
+        foreach (var c in text)
+        {
+            if (c == '\n' || c == '\r' || c == '\t' || c >= ' ')
+            {
+                sb.Append(c);
+            }
+        }
+        return System.Text.RegularExpressions.Regex.Replace(sb.ToString(), "\\s{3,}", "\n\n");
     }
 
     private async Task<int> GetContextWindowAsync(Guid? preferredProviderId, Guid? preferredModelId, CancellationToken ct)

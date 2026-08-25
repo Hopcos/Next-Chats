@@ -74,9 +74,6 @@ async function remove(id: string, title: string, event: MouseEvent) {
       <el-button size="small" text @click="kernel.session.toggleSidebar()">
         {{ kernel.session.state.sidebarCollapsed ? '⮞' : '⮜' }}
       </el-button>
-      <el-button v-if="!kernel.session.state.sidebarCollapsed" size="small" type="primary" plain @click="kernel.session.create()">
-        ＋ {{ t('chat.newSession') }}
-      </el-button>
     </div>
   </aside>
 </template>
