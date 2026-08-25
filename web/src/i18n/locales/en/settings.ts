@@ -1,0 +1,20 @@
+export default {
+  settings: {
+    back: '← Back to Chat',
+    title: 'Personal Settings',
+    basic: 'Basic Info',
+    usernameLabel: 'Username',
+    rolesLabel: 'Roles',
+    promptsTitle: 'Prompts (read-only)',
+    noPrompts: 'No Prompt bound to your role.',
+    colName: 'Name',
+    colSummary: 'Summary',
+    mcpsTitle: 'MCP Servers (read-only)',
+    noMcps: 'No MCP bound to your role.',
+    skillsTitle: 'SKILL (read-only)',
+    noSkills: 'No SKILL bound to your role.',
+    colMetaTool: 'Meta Tool',
+    usernameRow: '{label}: {username} ({displayName})',
+    mcpTitle: '{name} ({endpoint})',
+  },
+}

@@ -1,0 +1,20 @@
+export default {
+  settings: {
+    back: '← 返回聊天',
+    title: '个人设置',
+    basic: '基础信息',
+    usernameLabel: '用户名',
+    rolesLabel: '角色',
+    promptsTitle: 'Prompt（只读）',
+    noPrompts: '当前角色未绑定 Prompt',
+    colName: '名称',
+    colSummary: '能力摘要',
+    mcpsTitle: 'MCP 服务器（只读）',
+    noMcps: '当前角色未绑定 MCP',
+    skillsTitle: 'SKILL（只读）',
+    noSkills: '当前角色未绑定 SKILL',
+    colMetaTool: '元工具',
+    usernameRow: '{label}：{username}（{displayName}）',
+    mcpTitle: '{name}（{endpoint}）',
+  },
+}

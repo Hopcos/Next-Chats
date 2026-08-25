@@ -1,0 +1,43 @@
+# .NET
+bin/
+obj/
+artifacts/
+*.user
+*.suo
+*.userprefs
+
+# Web / Node
+node_modules/
+web/dist/
+web/.vite/
+web/tsconfig.tsbuildinfo
+*.tsbuildinfo
+*.local
+npm-debug.log*
+
+# Runtime & data
+data/
+AppData/
+*.db
+*.db-shm
+*.db-wal
+logs/
+*.log
+*.err.log
+
+# Env & secrets
+.env
+.env.*
+!.env.example
+
+# IDE / OS
+.vs/
+.vscode/
+.idea/
+Thumbs.db
+.DS_Store
+
+# Probe / scratch / temp scripts
+.probe/
+nc-*.mjs
+*.bak

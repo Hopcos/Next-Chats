@@ -1,0 +1,113 @@
+/* ================= Next Chats 主题 ================= */
+
+:root {
+  --nc-bg: #070b18;
+  --nc-bg-glow: rgba(56, 189, 248, 0.12);
+  --nc-surface: rgba(15, 23, 42, 0.72);
+  --nc-surface-solid: #0f172a;
+  --nc-border: rgba(148, 163, 184, 0.16);
+  --nc-text: #e2e8f0;
+  --nc-text-dim: #94a3b8;
+  --nc-primary: #38bdf8;
+  --nc-radius: 14px;
+}
+
+/* 主题：极光 aurora（默认）——深海蓝底 + 青绿/紫双光晕，与午夜（纯黑靛蓝）明确区分 */
+html[data-theme='aurora'] {
+  --nc-bg: #0a1830;
+  --nc-bg-glow: rgba(45, 212, 191, 0.2);
+  --nc-bg-glow2: rgba(167, 139, 250, 0.18);
+  --nc-surface: rgba(15, 35, 66, 0.66);
+  --nc-surface-solid: #0f2342;
+  --nc-border: rgba(148, 197, 255, 0.18);
+  --nc-primary: #2dd4bf;
+}
+
+/* 主题：破晓 dawn（明亮） */
+html[data-theme='dawn'] {
+  --nc-bg: #eef4fb;
+  --nc-bg-glow: rgba(59, 130, 246, 0.1);
+  --nc-surface: rgba(255, 255, 255, 0.82);
+  --nc-surface-solid: #ffffff;
+  --nc-border: rgba(15, 23, 42, 0.12);
+  --nc-text: #0f172a;
+  --nc-text-dim: #64748b;
+  --nc-primary: #2563eb;
+}
+
+/* 主题：午夜 midnight（深黑，Element Plus dark） */
+html[data-theme='midnight'] {
+  --nc-bg: #02040a;
+  --nc-bg-glow: rgba(99, 102, 241, 0.16);
+  --nc-primary: #818cf8;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+html,
+body,
+#app {
+  height: 100%;
+  margin: 0;
+}
+
+body {
+  font-family:
+    'Inter',
+    'PingFang SC',
+    'Microsoft YaHei',
+    system-ui,
+    -apple-system,
+    sans-serif;
+  color: var(--nc-text);
+  background:
+    radial-gradient(1200px 600px at 20% -10%, var(--nc-bg-glow), transparent 60%),
+    radial-gradient(900px 520px at 78% 38%, var(--nc-bg-glow2, transparent), transparent 55%),
+    radial-gradient(1000px 500px at 90% 110%, var(--nc-bg-glow), transparent 55%),
+    var(--nc-bg);
+  overflow: hidden;
+}
+
+/* 3D 背景层 */
+.three-stage {
+  position: fixed;
+  inset: 0;
+  z-index: 0;
+  pointer-events: none;
+}
+
+/* 文本辅助 */
+.nc-dim {
+  color: var(--nc-text-dim);
+}
+
+.nc-mono {
+  font-family: 'JetBrains Mono', ui-monospace, 'Cascadia Code', monospace;
+  font-size: 0.85em;
+}
+
+/* 消息气泡 */
+.bubble {
+  border-radius: var(--nc-radius);
+  background: var(--nc-surface);
+  border: 1px solid var(--nc-border);
+  backdrop-filter: blur(10px);
+  padding: 12px 16px;
+  font-size: 14px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+/* 薄滚动条 */
+.nc-scroll::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+.nc-scroll::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 3px;
+}

@@ -1,0 +1,10 @@
+<Solution>
+  <Folder Name="/samples/">
+    <Project Path="samples/McpDemoServer/McpDemoServer.csproj" />
+  </Folder>
+  <Folder Name="/src/">
+    <Project Path="src/NextChats.Api/NextChats.Api.csproj" />
+    <Project Path="src/NextChats.Core/NextChats.Core.csproj" />
+    <Project Path="src/NextChats.Infrastructure/NextChats.Infrastructure.csproj" />
+  </Folder>
+</Solution>
