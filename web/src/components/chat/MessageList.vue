@@ -113,6 +113,8 @@ onUnmounted(() => {
   overflow-y: auto;
   padding: 10px 4%;
   scroll-behavior: smooth;
+  /* 回答框宽度 = 剩余窗口（聊天内容区）的 80%，随窗口大小动态缩放 */
+  --nc-msg-w: 80%;
 }
 
 .welcome {

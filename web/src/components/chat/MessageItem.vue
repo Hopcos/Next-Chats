@@ -415,6 +415,11 @@ function prettyArgs(raw?: string): string {
 
 <style scoped>
 .row {
+  /* 消息行宽度 = 剩余聊天区宽度的 80%（MessageList 注入 --nc-msg-w），随窗口动态缩放 */
+  width: var(--nc-msg-w, 80%);
+  /* 整个消息列（回答/思考/提问框）在页面中水平居中；行内依然所有框右对齐 */
+  margin-left: auto;
+  margin-right: auto;
   display: flex;
   gap: 8px;
   margin-bottom: 4px;
@@ -439,15 +444,29 @@ function prettyArgs(raw?: string): string {
   justify-content: center;
 }
 
+/* 回答行的头像不占布局宽度：回答框（思考框）宽度 = 行宽 = 容器宽 */
+.row.assistant {
+  position: relative;
+}
+
+.row.assistant .avatar-mini {
+  position: absolute;
+  right: 100%;
+  margin-right: 8px;
+}
+
 .body {
-  max-width: 78%;
+  /* 回答框/思考框：占满消息行（行宽 = 固定列宽），宽度与容器一致 */
+  width: 100%;
   min-width: 120px;
   /* 行距随 .md 容器（1.15）；plain-text 打字机阶段继承此值 */
   line-height: 1.15;
 }
 
 .row.user .body {
-  max-width: 70%;
+  /* 提问框宽度 = 回答框宽度的 2/3；row-reverse 使其右缘与回答框右缘对齐 */
+  width: calc(var(--nc-msg-w, 80%) * 2 / 3);
+  min-width: 120px;
 }
 
 .bubble.streaming {
