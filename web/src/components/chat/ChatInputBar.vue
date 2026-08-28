@@ -31,6 +31,13 @@ const streaming = computed(() => kernel.chat.state.streaming)
 // 无当前会话时禁用输入并引导（首次使用兜底，与 ChatView 自动创建一致）
 const noSession = computed(() => !kernel.session.state.currentId)
 
+// 全屏展开状态：点击右上角 ICON 后输入框上延至覆盖层（类似新层），再点收缩
+const expanded = ref(false)
+// 输入框自动高度：最小 3 行；常规最大 20 行（超出出现内部滚动条），展开后放大到 40 行
+const autoSize = computed(() =>
+  expanded.value ? { minRows: 8, maxRows: 40 } : { minRows: 3, maxRows: 20 },
+)
+
 interface PendingImage {
   id: string
   fileName: string
@@ -101,6 +108,8 @@ async function send() {
   const imgs = images.value.map((i) => ({ fileName: i.fileName, mimeType: i.mimeType, base64: i.base64 }))
   text.value = ''
   images.value = []
+  // 发送即关闭覆盖层并恢复最小高度：不等 AI 回复完成（send 是流式完整流程，会阻塞到回复结束）
+  expanded.value = false
   await kernel.chat.send(content, imgs, { enabled: thinkingEnabled.value, effort: thinkingEffort.value })
 }
 
@@ -117,8 +126,18 @@ function interrupt() {
 </script>
 
 <template>
-  <div class="input-bar-wrap">
-    <div class="input-bar">
+  <div class="input-bar-wrap" :class="{ expanded }">
+    <div class="input-bar" :class="{ expanded }">
+      <span
+        class="expand-btn"
+        :title="expanded ? t('chat.shrinkInput') : t('chat.expandInput')"
+        :aria-label="expanded ? t('chat.shrinkInput') : t('chat.expandInput')"
+        @click="expanded = !expanded"
+      >
+        <!-- 全屏/还原 ICON -->
+        <svg v-if="!expanded" class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M4 2L2 4l3 3M12 2l2 2-3 3M4 14l-2-2 3-3M12 14l2-2-3-3" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+        <svg v-else class="ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M2 5l3-3 3 3M8 3H3v5M14 11l-3 3-3-3M8 13h5V8" fill="none" stroke="currentColor" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round" /></svg>
+      </span>
       <div v-if="visionSupported && images.length > 0" class="image-row">
         <div v-for="img in images" :key="img.id" class="image-thumb">
           <img :src="img.dataUrl" :alt="img.fileName" />
@@ -128,7 +147,7 @@ function interrupt() {
       <el-input
         v-model="text"
         type="textarea"
-        :rows="3"
+        :autosize="autoSize"
         resize="none"
         :placeholder="noSession ? t('chat.inputPlaceholderNoSession') : t('chat.inputPlaceholder')"
         :disabled="noSession"
@@ -176,6 +195,83 @@ function interrupt() {
   border-top: 1px solid var(--nc-border);
   background: var(--nc-surface);
   backdrop-filter: blur(10px);
+  transition: padding 0.2s, background 0.2s;
+}
+
+/* 展开态：整块输入区上延为覆盖层（fixed 全区域，类似弹出新层） */
+.input-bar-wrap.expanded {
+  position: fixed;
+  inset: 56px 6% 14px;
+  z-index: 90;
+  padding: 0;
+  border-top: none;
+  background: color-mix(in srgb, var(--nc-bg) 88%, transparent);
+  backdrop-filter: blur(14px);
+}
+
+/* 圆角输入容器 */
+.input-bar {
+  position: relative;
+  border: 1px solid var(--nc-border);
+  border-radius: 14px;
+  padding: 10px 14px 8px;
+  background: color-mix(in srgb, var(--nc-bg) 55%, transparent);
+}
+
+.input-bar.expanded {
+  height: 100%;
+  box-sizing: border-box;
+  display: flex;
+  flex-direction: column;
+  border-radius: 18px;
+  box-shadow: 0 24px 70px rgba(0, 0, 0, 0.4);
+}
+
+/* 展开态：textarea 占满剩余高度，内部滚动 */
+.input-bar.expanded .el-textarea {
+  flex: 1;
+  display: flex;
+  min-height: 0;
+}
+
+.input-bar.expanded :deep(.el-textarea__inner) {
+  height: 100% !important;
+  min-height: 0 !important;
+  flex: 1;
+}
+
+/* 右上角全屏/还原 ICON */
+.expand-btn {
+  position: absolute;
+  top: 8px;
+  right: 10px;
+  z-index: 6;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  cursor: pointer;
+  color: var(--nc-text-dim);
+  background: color-mix(in srgb, var(--nc-text-dim) 8%, transparent);
+  transition: background 0.15s, color 0.15s;
+}
+
+.expand-btn:hover {
+  background: color-mix(in srgb, var(--nc-text-dim) 18%, transparent);
+  color: var(--nc-text);
+}
+
+.expand-btn .ico {
+  width: 14px;
+  height: 14px;
+}
+
+/* 给 textarea 留出右上角 ICON 空间，避免首行文字被遮挡 */
+.input-bar :deep(.el-textarea__inner) {
+  padding-right: 38px;
+  border-radius: 8px;
 }
 
 .bar-actions {

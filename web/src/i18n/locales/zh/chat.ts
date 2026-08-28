@@ -38,6 +38,8 @@ export default {
     failedShort: '失败',
     inputPlaceholderNoSession: '请先点击左侧或上方的“新会话”，创建后即可开始对话',
     policyHintNoSession: '当前还没有会话，创建后开始聊天',
+    expandInput: '展开输入区',
+    shrinkInput: '收缩输入区',
     thinkInProgress: '✨ 思考中…',
     thinkProcess: '💭 思考过程（{len} 字）',
     thinkingMode: '思考模式',

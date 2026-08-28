@@ -38,6 +38,8 @@ export default {
     failedShort: 'Failed',
     inputPlaceholderNoSession: 'Click "New Session" above or in the sidebar to start chatting',
     policyHintNoSession: 'No session yet — create one to start chatting',
+    expandInput: 'Expand input',
+    shrinkInput: 'Collapse input',
     thinkInProgress: '✨ Thinking…',
     thinkProcess: '💭 Thinking ({len} chars)',
     thinkingMode: 'Thinking',
