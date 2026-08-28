@@ -174,6 +174,7 @@ const themeOptions = [
       <!-- :key 绑定会话 id：切换会话时整个列表重挂载 → 首屏强制滚到底部 -->
       <MessageList
         :key="kernel.session.state.currentId ?? 'none'"
+        :session-id="kernel.session.state.currentId"
         :messages="messages"
         @regenerate="onRegenerate"
         @remove="onRemoveMessage"

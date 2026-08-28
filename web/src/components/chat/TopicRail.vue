@@ -58,13 +58,14 @@ function onScroll() {
 }
 
 watch(topics, () => {
-  activeIndex.value = -1
-  onScroll()
+  // 无条件定位到最后一个话题：无论以任何方式进入会话，右侧竖轨高亮最后一项（不依赖滚动事件、不恢复缓存位置）
+  activeIndex.value = Math.max(0, topics.value.length - 1)
 })
 
 onMounted(() => {
   props.scroller?.addEventListener('scroll', onScroll, { passive: true })
-  onScroll()
+  // 首次进入：无条件定位到最后一个话题（不先按滚动位置计算，直接高亮最后一项）
+  activeIndex.value = Math.max(0, topics.value.length - 1)
 })
 
 onUnmounted(() => {

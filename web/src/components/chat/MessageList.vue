@@ -6,30 +6,43 @@ import MessageItem from '@/components/chat/MessageItem.vue'
 import TopicRail from '@/components/chat/TopicRail.vue'
 
 const { t } = useI18n()
-const props = defineProps<{ messages: UiMessage[] }>()
+const props = defineProps<{ messages: UiMessage[]; sessionId?: string | null }>()
 const emit = defineEmits<{ regenerate: [messageId: string]; remove: [message: UiMessage] }>()
 
 const scroller = ref<HTMLDivElement | null>(null)
 const stickToBottom = ref(true)
-let hasShownOnce = false
 
-async function scrollBottom() {
-  await nextTick()
+/**
+ * 无论以任何方式进入会话（首次 / 切换 / 刷新 / 历史加载完成）都无条件滚动到最底部。
+ * 用 rAF 循环持续以最新 scrollHeight 定位，直到连续 5 帧贴底且高度不再变化才结束；
+ * 不设帧数上限（防止长列表渲染耗帧导致提前停在半路），仅 10s 时间死兜底防死循环。
+ */
+async function scrollToBottomForce() {
   const el = scroller.value
-  if (el && stickToBottom.value) {
-    el.scrollTop = el.scrollHeight
-  }
-}
-
-/** 首屏/历史加载完成：无视 onScroll 干扰，强制一次性“即时”滚到底（禁用 smooth 动画避免中途被中断） */
-async function scrollBottomInstant() {
-  await nextTick()
-  const el = scroller.value
-  if (!el || !props.messages.length) return
-  stickToBottom.value = true
+  if (!el) return
   el.style.scrollBehavior = 'auto'
-  el.scrollTop = el.scrollHeight
-  el.style.scrollBehavior = ''
+  const deadline = performance.now() + 10000
+  let lastHeight = -1
+  let stableFrames = 0
+  const step = () => {
+    const e = scroller.value
+    if (!e) return
+    const height = e.scrollHeight
+    const gap = height - e.scrollTop - e.clientHeight
+    if (gap <= 2 && height === lastHeight) {
+      stableFrames++
+      if (stableFrames >= 5 || performance.now() > deadline) {
+        e.style.scrollBehavior = ''
+        return
+      }
+    } else {
+      stableFrames = 0
+      lastHeight = height
+    }
+    e.scrollTo({ top: height, behavior: 'auto' })
+    requestAnimationFrame(step)
+  }
+  step()
 }
 
 function onScroll() {
@@ -38,23 +51,28 @@ function onScroll() {
   stickToBottom.value = el.scrollHeight - el.scrollTop - el.clientHeight < 80
 }
 
+// 会话切换（key 重挂载的首个场景）即触发强制滚动；历史/新消息到达（空→非空）再次触发
+let lastMessageCount = 0
 watch(
-  () => props.messages,
-  async () => {
-    // 首次出现内容（挂载即有历史 / 历史加载完成）：强制即时滚到底
-    if (!hasShownOnce && props.messages.length > 0) {
-      hasShownOnce = true
-      await scrollBottomInstant()
-      return
-    }
-    if (props.messages.length === 0) return
-    await scrollBottom()
+  () => props.messages.length,
+  async (count) => {
+    const grewFromEmpty = lastMessageCount === 0 && count > 0
+    lastMessageCount = count
+    if (grewFromEmpty) await scrollToBottomForce()
   },
-  { deep: true, immediate: true },
+  { immediate: true },
 )
 
-// ---- 内容高度变化即时跟随：打字机揭示阶段只改 MessageItem 内部文本，不触发上方 watch ----
-// 用 MutationObserver 兜底：只要内容区 DOM 高度在长（打字机/思考滚动），且贴底，就持续滚底
+watch(
+  () => props.sessionId,
+  () => {
+    // 切换会话（或首次进入）：无条件强制滚动到底部（不管之前位置/缓存）
+    void scrollToBottomForce()
+  },
+  { immediate: true },
+)
+
+// 打字机揭示阶段只改 MessageItem 内部文本，不触发上方 watch；内容区变高且贴底时持续跟随
 let observer: MutationObserver | null = null
 let scrollRaf = 0
 
