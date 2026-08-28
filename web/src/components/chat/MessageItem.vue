@@ -27,8 +27,8 @@ interface MermaidView {
 const mermaidViews = new Map<HTMLDivElement, MermaidView>()
 const streamingNow = computed(() => props.message.status === 'sending')
 
-// 话题操作按钮：仅在 assistant 回复就绪（非流式）时显示
-const actionReady = computed(() => isAssistant.value && props.message.status !== 'sending')
+// 话题操作按钮：消息就绪（非流式）时显示 —— 提问（复制/删除）、回答（复制/重新生成/删除）
+const actionReady = computed(() => props.message.status !== 'sending')
 
 async function copyContent() {
   const text = props.message.content || ''
@@ -402,10 +402,10 @@ function prettyArgs(raw?: string): string {
         <template v-if="message.usage.totalMs > 0">{{ t('chat.usageTotalMs', { ms: message.usage.totalMs }) }}</template>
       </div>
 
-      <!-- 话题操作：复制 / 重新生成 / 删除（assistant 回复就绪后显示） -->
+      <!-- 话题操作：复制 / 重新生成 / 删除（消息就绪后显示；提问框显示 复制/删除，回答框另有 重新生成） -->
       <div v-if="actionReady" class="actions">
         <button class="act nc-dim" :title="t('chat.copy')" @click="copyContent">📋 {{ t('chat.copy') }}</button>
-        <button class="act nc-dim" :title="t('chat.regenerate')" @click="emit('regenerate', message.id)">🔄 {{ t('chat.regenerate') }}</button>
+        <button v-if="isAssistant" class="act nc-dim" :title="t('chat.regenerate')" @click="emit('regenerate', message.id)">🔄 {{ t('chat.regenerate') }}</button>
         <button class="act nc-dim danger" :title="t('common.delete')" @click="emit('remove', message)">🗑 {{ t('common.delete') }}</button>
       </div>
     </div>
