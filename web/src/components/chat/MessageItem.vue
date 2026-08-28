@@ -184,7 +184,9 @@ async function renderMermaid() {
   const blocks = Array.from(host.querySelectorAll('pre.mermaid')) as HTMLElement[]
   if (!blocks.length) return
   // 必须在 mermaid.run 之前保存原始源码（渲染后 pre 内容会变成 SVG/CSS）
-  const raws = blocks.map((b) => b.textContent ?? '')
+  // 查看源码时把 ICON（emoji 图标）还原为实际字符：移除 🔍🛡️✈️🚦 等图形图标，
+  // 保留其余纯文本字符 —— 仅作用于源码视图文本，不影响图上渲染
+  const raws = blocks.map((b) => (b.textContent ?? '').replace(/[\u{1F000}-\u{1FAFF}\u{2600}-\u{27BF}\u{FE0F}]/gu, ''))
   try {
     await mermaid.run({ nodes: blocks, suppressErrors: true })
   } catch {
