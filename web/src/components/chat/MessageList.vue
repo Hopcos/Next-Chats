@@ -7,7 +7,7 @@ import TopicRail from '@/components/chat/TopicRail.vue'
 
 const { t } = useI18n()
 const props = defineProps<{ messages: UiMessage[]; sessionId?: string | null }>()
-const emit = defineEmits<{ regenerate: [messageId: string]; remove: [message: UiMessage] }>()
+const emit = defineEmits<{ regenerate: [messageId: string]; remove: [message: UiMessage]; favorite: [message: UiMessage] }>()
 
 const scroller = ref<HTMLDivElement | null>(null)
 const stickToBottom = ref(true)
@@ -111,6 +111,7 @@ onUnmounted(() => {
         :message="m"
         @regenerate="(id: string) => emit('regenerate', id)"
         @remove="(msg: UiMessage) => emit('remove', msg)"
+        @favorite="(msg: UiMessage) => emit('favorite', msg)"
       />
       <div style="height: 12px" />
     </div>

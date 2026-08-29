@@ -4,6 +4,8 @@ import { useRouter } from 'vue-router'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { kernel } from '@/kernel'
+import { http } from '@/api/http'
+import type { UiMessage } from '@/kernel/plugins'
 import { getLang, setLang, type AppLang } from '@/i18n'
 import SessionSidebar from '@/components/chat/SessionSidebar.vue'
 import MessageList from '@/components/chat/MessageList.vue'
@@ -98,6 +100,58 @@ async function onRemoveMessage(msg: { id: string; content?: string; role?: strin
   await kernel.chat.deleteFrom(msg.id)
 }
 
+// ---------------- 收藏：当前“提问 + 回答”一起收藏（去重提示由后端 409 提供） ----------------
+interface FavoriteDto {
+  id: string
+  title: string
+  questionText?: string | null
+  answerText?: string | null
+}
+
+async function onFavoriteMessage(msg: UiMessage) {
+  const list = messages.value
+  const idx = list.findIndex((m) => m.id === msg.id)
+  if (idx < 0) return
+
+  let q: UiMessage | undefined
+  let a: UiMessage | undefined
+  if (msg.role === 'user') {
+    // 提问：取本条；回答：其后第一条已完成（有正文）的 assistant 消息
+    q = msg
+    a = list.slice(idx + 1).find((m) => m.role === 'assistant' && m.content?.trim())
+  } else {
+    // 回答：本条；提问：其前最近的一条 user 消息
+    a = msg
+    for (let i = idx - 1; i >= 0; i--) {
+      if (list[i].role === 'user') {
+        q = list[i]
+        break
+      }
+    }
+  }
+
+  if (!a?.content?.trim() || !q?.content?.trim()) {
+    kernel.notify.warning(t('chat.favoriteNeedAnswer'))
+    return
+  }
+
+  try {
+    await http.post<FavoriteDto>('/api/chat/favorites', {
+      questionMessageId: q.id,
+      question: q.content.trim(),
+      answer: a.content.trim(),
+    })
+    kernel.notify.success(t('chat.favoriteSaved'))
+  } catch (e) {
+    const err = e as { code?: string; message?: string }
+    if (err.code === 'FAVORITE_DUPLICATED') {
+      kernel.notify.warning(t('chat.favoriteDuplicated'))
+    } else {
+      kernel.notify.error(err.message ?? t('chat.favoriteFailed'), err.code)
+    }
+  }
+}
+
 async function logout() {
   await kernel.auth.logout()
   void router.push('/login')
@@ -130,6 +184,10 @@ const themeOptions = [
             <el-button size="small" class="act-btn" @click="onNewSession">
               <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
               {{ t('chat.newSession') }}
+            </el-button>
+            <el-button size="small" class="act-btn" @click="router.push('/favorites')">
+              <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 9.9 5.8l4.4.6-3.2 3.1.8 4.4L8 11.9l-3.9 2 .8-4.4L1.7 6.4l4.4-.6L8 1.8Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" /></svg>
+              {{ t('chat.favorites') }}
             </el-button>
             <el-button size="small" class="act-btn" @click="openSettings">
               <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z" fill="none" stroke="currentColor" stroke-width="1.4" /><path d="M8 1.5v2M8 12.5v2M2.1 4.2l1.7 1M12.2 10.8l1.7 1M1.5 8h2M12.5 8h2M2.1 11.8l1.7-1M12.2 5.2l1.7-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" /></svg>
@@ -178,6 +236,7 @@ const themeOptions = [
         :messages="messages"
         @regenerate="onRegenerate"
         @remove="onRemoveMessage"
+        @favorite="onFavoriteMessage"
       />
       <ChatInputBar />
 

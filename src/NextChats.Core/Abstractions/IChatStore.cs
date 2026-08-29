@@ -46,4 +46,15 @@ public interface IChatStore
     Task<IdempotencyRecord?> GetIdempotencyAsync(Guid userId, string key, CancellationToken ct = default);
 
     Task StoreIdempotencyAsync(Guid userId, string key, string responseJson, CancellationToken ct = default);
+
+    // ---------- 用户收藏 ----------
+    Task<IReadOnlyList<UserFavorite>> ListFavoritesAsync(Guid userId, CancellationToken ct = default);
+
+    Task<UserFavorite?> FindFavoriteByQuestionAsync(Guid userId, Guid? questionMessageId, CancellationToken ct = default);
+
+    Task<UserFavorite> AddFavoriteAsync(UserFavorite favorite, CancellationToken ct = default);
+
+    Task<bool> RenameFavoriteAsync(Guid userId, Guid id, string title, CancellationToken ct = default);
+
+    Task<bool> DeleteFavoriteAsync(Guid userId, Guid id, CancellationToken ct = default);
 }

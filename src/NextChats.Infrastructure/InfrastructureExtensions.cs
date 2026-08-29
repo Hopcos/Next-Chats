@@ -84,6 +84,21 @@ public static class InfrastructureExtensions
             await AddColumnIfMissingAsync(conn, "LlmModels", "ThinkingEffort", "INTEGER NOT NULL DEFAULT 0");
             await AddColumnIfMissingAsync(conn, "LlmProviders", "ThinkingParam", "TEXT NOT NULL DEFAULT 'None'");
             await AddColumnIfMissingAsync(conn, "McpServers", "Instructions", "TEXT");
+            await AddTableIfMissingAsync(conn, "UserFavorites", """
+                CREATE TABLE "UserFavorites" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_UserFavorites" PRIMARY KEY,
+                    "UserId" TEXT NOT NULL,
+                    "Title" TEXT NOT NULL,
+                    "QuestionText" TEXT,
+                    "AnswerText" TEXT,
+                    "QuestionMessageId" TEXT,
+                    "CreatedAt" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL,
+                    CONSTRAINT "FK_UserFavorites_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX "IX_UserFavorites_UserId_CreatedAt" ON "UserFavorites" ("UserId", "CreatedAt");
+                CREATE INDEX "IX_UserFavorites_UserId_QuestionMessageId" ON "UserFavorites" ("UserId", "QuestionMessageId") WHERE "QuestionMessageId" IS NOT NULL;
+                """);
         }
         finally
         {
@@ -100,5 +115,17 @@ public static class InfrastructureExtensions
         await using var alter = conn.CreateCommand();
         alter.CommandText = $"ALTER TABLE \"{table}\" ADD COLUMN \"{column}\" {definition}";
         await alter.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>轻量建表：EnsureCreated 对已存在的库不会追加新表，这里幂等补建（表已存在则跳过）</summary>
+    private static async Task AddTableIfMissingAsync(System.Data.Common.DbConnection conn, string table, string createSql)
+    {
+        await using var check = conn.CreateCommand();
+        check.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = '{table}'";
+        var exists = Convert.ToInt32(await check.ExecuteScalarAsync()) > 0;
+        if (exists) return;
+        await using var create = conn.CreateCommand();
+        create.CommandText = createSql;
+        await create.ExecuteNonQueryAsync();
     }
 }

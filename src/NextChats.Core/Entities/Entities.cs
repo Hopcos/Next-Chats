@@ -414,6 +414,32 @@ public class UserSetting
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 }
 
+/// <summary>用户收藏的对话（按用户隔离；一对提问+回答；支持重命名、删除、去重）</summary>
+public class UserFavorite
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid UserId { get; set; }
+
+    /// <summary>收藏标题：默认取问题摘要（前 N 字符），可手工重命名</summary>
+    [Required, MaxLength(128)] public string Title { get; set; } = "";
+
+    /// <summary>收藏的提问（用户消息全文）</summary>
+    public string? QuestionText { get; set; }
+
+    /// <summary>收藏的回答（助手消息全文，含思考过程与正文）</summary>
+    public string? AnswerText { get; set; }
+
+    /// <summary>来源问题消息 Id（用于去重：同一问题只收藏一次）</summary>
+    public Guid? QuestionMessageId { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public AppUser? User { get; set; }
+}
+
 /// <summary>Token 用量/成本/时延（可观测性与成本）</summary>
 public class TokenUsageRecord
 {

@@ -9,7 +9,7 @@ import { kernel } from '@/kernel'
 
 const props = defineProps<{ message: UiMessage }>()
 
-const emit = defineEmits<{ regenerate: [messageId: string]; remove: [message: UiMessage] }>()
+const emit = defineEmits<{ regenerate: [messageId: string]; remove: [message: UiMessage]; favorite: [message: UiMessage] }>()
 
 const { t } = useI18n()
 const thinkingOpen = ref(false)
@@ -402,8 +402,9 @@ function prettyArgs(raw?: string): string {
         <template v-if="message.usage.totalMs > 0">{{ t('chat.usageTotalMs', { ms: message.usage.totalMs }) }}</template>
       </div>
 
-      <!-- 话题操作：复制 / 重新生成 / 删除（消息就绪后显示；提问框显示 复制/删除，回答框另有 重新生成） -->
+      <!-- 话题操作：收藏 / 复制 / 重新生成 / 删除（消息就绪后显示；收藏=提问+回答一起；提问框无 重新生成） -->
       <div v-if="actionReady" class="actions">
+        <button class="act nc-dim" :title="t('chat.favorite')" @click="emit('favorite', message)">⭐ {{ t('chat.favorite') }}</button>
         <button class="act nc-dim" :title="t('chat.copy')" @click="copyContent">📋 {{ t('chat.copy') }}</button>
         <button v-if="isAssistant" class="act nc-dim" :title="t('chat.regenerate')" @click="emit('regenerate', message.id)">🔄 {{ t('chat.regenerate') }}</button>
         <button class="act nc-dim danger" :title="t('common.delete')" @click="emit('remove', message)">🗑 {{ t('common.delete') }}</button>

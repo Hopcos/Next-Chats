@@ -7,6 +7,7 @@ export const router = createRouter({
   routes: [
     { path: '/login', name: 'login', component: () => import('@/views/LoginView.vue'), meta: { public: true } },
     { path: '/', name: 'chat', component: () => import('@/views/ChatView.vue') },
+    { path: '/favorites', name: 'favorites', component: () => import('@/views/FavoritesView.vue') },
     { path: '/settings', name: 'settings', component: () => import('@/views/PersonalSettingsView.vue') },
     {
       path: '/admin',
