@@ -12,7 +12,7 @@ const route = useRoute()
 const loading = ref(false)
 const authProviders = ref<AuthProviderDto[]>([])
 
-const form = reactive({ username: 'admin', password: 'admin123', authType: 'default' })
+const form = reactive({ username: '', password: '', authType: 'default' })
 
 onMounted(async () => {
   try {
@@ -47,12 +47,13 @@ async function submit() {
   <div class="login-wrap">
     <div class="login-card">
       <div class="logo">
-        <span class="logo-dot" />
+        <svg class="logo-star" viewBox="0 0 24 24" aria-hidden="true">
+          <path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z" />
+        </svg>
         Next <strong>Chats</strong>
       </div>
-      <p class="tagline nc-dim">{{ t('login.tagline') }}</p>
       <el-form label-position="top" @keyup.enter="submit">
-        <el-form-item v-if="authProviders.length" :label="t('login.authType')">
+        <el-form-item v-if="authProviders.length">
           <el-radio-group v-model="form.authType" class="auth-types">
             <el-radio value="default">{{ t('login.authDefault') }}</el-radio>
             <el-radio v-for="p in authProviders" :key="p.name" :value="p.name">{{ p.name }}</el-radio>
@@ -66,7 +67,6 @@ async function submit() {
         </el-form-item>
         <el-button type="primary" class="submit" :loading="loading" @click="submit">{{ t('login.submit') }}</el-button>
       </el-form>
-      <p class="hint nc-dim">{{ t('login.hint') }}</p>
     </div>
   </div>
 </template>
@@ -94,20 +94,18 @@ async function submit() {
   letter-spacing: 0.5px;
   display: flex;
   align-items: center;
+  justify-content: center;
   gap: 8px;
+  margin-bottom: 26px;
 }
 
-.logo-dot {
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--nc-primary);
-  box-shadow: 0 0 14px var(--nc-primary);
-}
-
-.tagline {
-  margin: 6px 0 24px;
-  font-size: 13px;
+/* 发光五角星标识：主题色填充 + 同色光晕，与下方单选原点同色 */
+.logo-star {
+  width: 15px;
+  height: 15px;
+  fill: var(--el-color-primary);
+  filter: drop-shadow(0 0 8px var(--el-color-primary));
+  flex: none;
 }
 
 .auth-types {
@@ -119,11 +117,5 @@ async function submit() {
 .submit {
   width: 100%;
   margin-top: 4px;
-}
-
-.hint {
-  font-size: 12px;
-  text-align: center;
-  margin-top: 20px;
 }
 </style>
