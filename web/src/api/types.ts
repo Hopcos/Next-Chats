@@ -110,6 +110,7 @@ export interface RoleDto {
   mcpServerIds: string[]
   promptIds: string[]
   skillIds: string[]
+  modelIds: string[]
 }
 
 export interface UserDto {

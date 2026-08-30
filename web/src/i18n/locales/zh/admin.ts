@@ -183,6 +183,7 @@ export default {
       serverWithTools: '{name}（{count} 工具）',
       secPrompts: 'Prompt（多选）',
       secSkills: 'SKILL（多选）',
+      secModels: 'LLM 模型（多选，未绑定时用户可见全部）',
       saveBindings: '保存绑定',
       loadFailed: '加载失败',
       saveFailed: '保存失败',

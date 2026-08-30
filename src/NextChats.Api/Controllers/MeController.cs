@@ -34,7 +34,10 @@ public sealed class MeController(
     [HttpGet("catalog")]
     public async Task<IActionResult> Catalog()
     {
-        var (mcpIds, promptIds, skillIds) = await config.GetRoleBindingsAsync(UserId);
+        var (mcpIds, promptIds, skillIds, modelIds) = await config.GetRoleBindingsAsync(UserId);
+        // 管理员不受模型角色绑定限制（管理端需全量可见）；绑定为空（未配置）时保持默认全量
+        var isAdmin = await config.IsAdminAsync(UserId);
+        var modelRestricted = !isAdmin && modelIds.Length > 0;
 
         var prompts = (await config.GetEnabledPromptsAsync())
             .Where(p => promptIds.Contains(p.Id))
@@ -60,6 +63,8 @@ public sealed class MeController(
             .ToList();
 
         // 聊天设置需要选择“供应商 » 模型”（仅非敏感字段）
+        // 角色模型绑定：绑定了 LLM 模型的角色，其用户只能看到并选择绑定内的模型；
+        // 未绑定任何模型（modelIds 为空）时保持默认，全部启用模型可见。
         var providers = (await config.GetActiveProvidersAsync())
             .Select(p => new
             {
@@ -67,10 +72,13 @@ public sealed class MeController(
                 p.Name,
                 kind = p.Kind.ToString(),
                 isHealthy = p.IsHealthy,
-                models = p.Models.Where(m => m.Enabled).OrderBy(m => m.Priority)
+                models = p.Models
+                    .Where(m => m.Enabled && (!modelRestricted || modelIds.Contains(m.Id)))
+                    .OrderBy(m => m.Priority)
                     .Select(m => new { m.Id, m.Name, m.IsVision, m.ContextWindow, m.PriceInPer1K, m.PriceOutPer1K })
                     .ToList(),
             })
+            .Where(p => p.models.Count > 0)
             .ToList();
 
         return Ok(new { prompts, mcps, skills, providers });

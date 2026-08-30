@@ -30,8 +30,8 @@ public interface IAdminStore
 
     Task DeleteRoleAsync(Guid id, CancellationToken ct = default);
 
-    /// <summary>角色 ↔ 资源绑定（Mcp/Prompt/Skill）</summary>
-    Task SetRoleBindingsAsync(Guid roleId, Guid[] mcpIds, Guid[] promptIds, Guid[] skillIds, CancellationToken ct = default);
+    /// <summary>角色 ↔ 资源绑定（Mcp/Prompt/Skill/LLM模型）</summary>
+    Task SetRoleBindingsAsync(Guid roleId, Guid[] mcpIds, Guid[] promptIds, Guid[] skillIds, Guid[] modelIds, CancellationToken ct = default);
 
     // ---------- LLM Provider ----------
     Task<IReadOnlyList<LlmProvider>> ListProvidersAsync(CancellationToken ct = default);

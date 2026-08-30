@@ -36,6 +36,9 @@ public sealed record AgentRunRequest
     /// <summary>首选模型（用户聊天设置，供应商下带出的模型），null = 供应商内优先级最高的启用模型</summary>
     public Guid? PreferredModelId { get; init; }
 
+    /// <summary>LLM 模型白名单（用户角色绑定；null/空 = 不限制）。未授权模型被路由层排除，管理员传 null</summary>
+    public IReadOnlyList<Guid>? AllowedModelIds { get; init; }
+
     public string? ModelOverride { get; init; }
 
     /// <summary>ReAct 轮次上限；0 = 使用配置 Policy:MaxReActSteps（默认 20）</summary>

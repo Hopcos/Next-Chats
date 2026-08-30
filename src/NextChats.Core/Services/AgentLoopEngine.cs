@@ -270,7 +270,7 @@ public sealed class AgentLoopEngine : IAgentLoopEngine
             ILlmClient client;
             try
             {
-                client = await _router.SelectClientAsync(request.PreferredProviderId, request.PreferredModelId, lang, ct);
+                client = await _router.SelectClientAsync(request.PreferredProviderId, request.PreferredModelId, lang, ct, request.AllowedModelIds?.ToArray());
                 await NotifySelectionFallbackAsync(request, client, lang, trace, writer, ct);
             }
             catch (LlmUnavailableException ex)

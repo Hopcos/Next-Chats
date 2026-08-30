@@ -19,6 +19,7 @@ public static class Texts
         ["EMPTY_FAVORITE"] = ("Favorite content cannot be empty", "收藏内容不能为空"),
         ["FAVORITE_NOT_FOUND"] = ("Favorite not found or already deleted", "收藏不存在或已被删除"),
         ["FAVORITE_DUPLICATED"] = ("This conversation is already in your favorites", "该对话已收藏，无需重复收藏"),
+        ["MODEL_NOT_AUTHORIZED"] = ("You are not authorized to use the selected model. Please choose a model bound to your role.", "您没有使用所选模型的权限，请选择角色已绑定的模型"),
         ["EMPTY_MESSAGE"] = ("Message cannot be empty", "消息内容不能为空"),
         ["STREAM_ERROR"] = ("Stream request failed, please retry later", "流式对话出现异常，请稍后重试"),
         ["INPUT_FLAGGED"] = ("Suspected prompt injection detected and blocked. Please rephrase your input.", "检测到疑似注入内容，已拦截。请规范输入后重试。"),

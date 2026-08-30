@@ -52,6 +52,9 @@ public class AppRole
     public List<Prompt> Prompts { get; set; } = [];
 
     public List<Skill> Skills { get; set; } = [];
+
+    /// <summary>角色可用的 LLM 模型（角色绑定后，拥有该角色的用户才能看到并选择这些模型）</summary>
+    public List<LlmModel> Models { get; set; } = [];
 }
 
 /// <summary>LLM 供应商配置（Server 端统一管理，多供应商 + 基础信息 + 模型子表）</summary>
@@ -131,6 +134,9 @@ public class LlmModel
     public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public LlmProvider? Provider { get; set; }
+
+    /// <summary>绑定了该模型的角色（角色绑定后，只有这些角色的用户可见/可选该模型）</summary>
+    public List<AppRole> Roles { get; set; } = [];
 }
 
 /// <summary>MCP Server 配置（多 MCP、启用开关；支持手工填写 + 自动带出元数据）</summary>

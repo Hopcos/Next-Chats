@@ -99,6 +99,19 @@ public static class InfrastructureExtensions
                 CREATE UNIQUE INDEX "IX_UserFavorites_UserId_CreatedAt" ON "UserFavorites" ("UserId", "CreatedAt");
                 CREATE INDEX "IX_UserFavorites_UserId_QuestionMessageId" ON "UserFavorites" ("UserId", "QuestionMessageId") WHERE "QuestionMessageId" IS NOT NULL;
                 """);
+            // 角色 ↔ LLM 模型 多对多（RoleModelBindings）
+            // 注意：连接表列名由 EF 按导航属性生成 —— AppRole.Models ↔ LlmModel.Roles → "ModelsId"/"RolesId"
+            await FixJoinTableColumnsAsync(conn, "RoleModelBindings", "ModelsId");
+            await AddTableIfMissingAsync(conn, "RoleModelBindings", """
+                CREATE TABLE "RoleModelBindings" (
+                    "RolesId" TEXT NOT NULL,
+                    "ModelsId" TEXT NOT NULL,
+                    CONSTRAINT "PK_RoleModelBindings" PRIMARY KEY ("RolesId", "ModelsId"),
+                    CONSTRAINT "FK_RoleModelBindings_Roles_RolesId" FOREIGN KEY ("RolesId") REFERENCES "Roles" ("Id") ON DELETE CASCADE,
+                    CONSTRAINT "FK_RoleModelBindings_LlmModels_ModelsId" FOREIGN KEY ("ModelsId") REFERENCES "LlmModels" ("Id") ON DELETE CASCADE
+                );
+                CREATE INDEX "IX_RoleModelBindings_ModelsId" ON "RoleModelBindings" ("ModelsId");
+                """);
         }
         finally
         {
@@ -127,5 +140,21 @@ public static class InfrastructureExtensions
         await using var create = conn.CreateCommand();
         create.CommandText = createSql;
         await create.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>修复早期以错误列名建成的多对多表：表存在但缺指定列 → 丢弃后由 AddTableIfMissingAsync 重建</summary>
+    private static async Task FixJoinTableColumnsAsync(System.Data.Common.DbConnection conn, string table, string requiredColumn)
+    {
+        await using var check = conn.CreateCommand();
+        check.CommandText = $"SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name = '{table}'";
+        var exists = Convert.ToInt32(await check.ExecuteScalarAsync()) > 0;
+        if (!exists) return;
+        await using var colCheck = conn.CreateCommand();
+        colCheck.CommandText = $"SELECT COUNT(*) FROM pragma_table_info('{table}') WHERE name = '{requiredColumn}'";
+        var hasColumn = Convert.ToInt32(await colCheck.ExecuteScalarAsync()) > 0;
+        if (hasColumn) return;
+        await using var drop = conn.CreateCommand();
+        drop.CommandText = $"DROP TABLE \"{table}\"";
+        await drop.ExecuteNonQueryAsync();
     }
 }

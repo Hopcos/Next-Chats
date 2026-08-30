@@ -183,6 +183,7 @@ export default {
       serverWithTools: '{name} ({count} tools)',
       secPrompts: 'Prompts (multi-select)',
       secSkills: 'SKILL (multi-select)',
+      secModels: 'LLM Models (multi-select; unbound means all visible)',
       saveBindings: 'Save Bindings',
       loadFailed: 'Load failed',
       saveFailed: 'Save failed',

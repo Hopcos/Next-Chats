@@ -60,7 +60,7 @@ public sealed class ChatController(
             ?? provider?.Models.Where(m => m.Enabled).OrderBy(m => m.Priority).FirstOrDefault();
         var providerVision = provider is not null && (selectedModel?.IsVision == true || provider.Models.Any(m => m.IsVision));
 
-        var (roleMcpIds, _, _) = await config.GetRoleBindingsAsync(UserId);
+        var (roleMcpIds, _, _, _) = await config.GetRoleBindingsAsync(UserId);
         var servers = (await config.GetEnabledMcpServersAsync())
             .Where(s => s.Enabled && roleMcpIds.Contains(s.Id))
             .ToList();

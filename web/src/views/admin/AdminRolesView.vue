@@ -3,7 +3,7 @@ import { onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
-import type { McpServerDto, PromptDto, RoleDto, SkillDto } from '@/api/types'
+import type { LlmProviderDto, McpServerDto, PromptDto, RoleDto, SkillDto } from '@/api/types'
 import { kernel } from '@/kernel'
 
 const { t } = useI18n()
@@ -12,11 +12,12 @@ const roles = ref<RoleDto[]>([])
 const allMcps = ref<McpServerDto[]>([])
 const allPrompts = ref<PromptDto[]>([])
 const allSkills = ref<SkillDto[]>([])
+const allProviders = ref<LlmProviderDto[]>([])
 const loading = ref(false)
 const bindDialog = ref(false)
 const activeRole = ref<RoleDto | null>(null)
 
-const bindings = reactive({ mcpServerIds: [] as string[], promptIds: [] as string[], skillIds: [] as string[] })
+const bindings = reactive({ mcpServerIds: [] as string[], promptIds: [] as string[], skillIds: [] as string[], modelIds: [] as string[] })
 
 async function createRole() {
   try {
@@ -43,16 +44,18 @@ async function createRole() {
 async function load() {
   loading.value = true
   try {
-    const [r, m, p, s] = await Promise.all([
+    const [r, m, p, s, l] = await Promise.all([
       http.get<RoleDto[]>('/api/admin/roles'),
       http.get<McpServerDto[]>('/api/admin/mcp-servers'),
       http.get<PromptDto[]>('/api/admin/prompts'),
       http.get<SkillDto[]>('/api/admin/skills'),
+      http.get<LlmProviderDto[]>('/api/admin/llm-providers'),
     ])
     roles.value = r
     allMcps.value = m
     allPrompts.value = p
     allSkills.value = s
+    allProviders.value = l
   } catch (e) {
     kernel.notify.error((e as { message?: string }).message ?? t('admin.roles.loadFailed'), (e as { code?: string }).code)
   } finally {
@@ -65,6 +68,7 @@ function openBindings(row: RoleDto) {
   bindings.mcpServerIds = [...row.mcpServerIds]
   bindings.promptIds = [...row.promptIds]
   bindings.skillIds = [...row.skillIds]
+  bindings.modelIds = [...row.modelIds]
   bindDialog.value = true
 }
 
@@ -116,6 +120,7 @@ onMounted(load)
           <el-tag size="small" type="warning">MCP {{ row.mcpServerIds.length }}</el-tag>
           <el-tag size="small" type="primary" style="margin-left: 4px">Prompt {{ row.promptIds.length }}</el-tag>
           <el-tag size="small" type="success" style="margin-left: 4px">SKILL {{ row.skillIds.length }}</el-tag>
+          <el-tag size="small" type="info" style="margin-left: 4px">LLM {{ row.modelIds.length }}</el-tag>
         </template>
       </el-table-column>
       <el-table-column :label="t('admin.roles.system')" width="70">
@@ -149,6 +154,16 @@ onMounted(load)
         <el-checkbox v-for="s in allSkills" :key="s.id" :value="s.id">{{ s.name }}</el-checkbox>
       </el-checkbox-group>
 
+      <h4 class="sec">{{ t('admin.roles.secModels') }}</h4>
+      <el-checkbox-group v-model="bindings.modelIds" class="vert">
+        <template v-for="pr in allProviders" :key="pr.id">
+          <div v-if="pr.models.length" class="prov">{{ pr.name }}</div>
+          <el-checkbox v-for="m in pr.models" :key="m.id" :value="m.id" :disabled="!m.enabled">
+            {{ m.name }}<span v-if="pr.name" class="muted"> · {{ pr.name }}</span>
+          </el-checkbox>
+        </template>
+      </el-checkbox-group>
+
       <template #footer>
         <el-button @click="bindDialog = false">{{ t('common.cancel') }}</el-button>
         <el-button type="primary" @click="saveBindings">{{ t('admin.roles.saveBindings') }}</el-button>
@@ -174,5 +189,16 @@ onMounted(load)
   flex-direction: column;
   align-items: flex-start;
   gap: 4px;
+}
+
+.prov {
+  font-weight: 600;
+  margin: 8px 0 2px;
+  color: var(--nc-text-2, #606266);
+}
+
+.muted {
+  opacity: 0.65;
+  font-size: 12px;
 }
 </style>

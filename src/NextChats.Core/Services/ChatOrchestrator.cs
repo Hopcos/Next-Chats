@@ -196,13 +196,22 @@ public sealed class ChatOrchestrator : IChatOrchestrator
         }
 
         // ---------- 有效交集工具收集 ----------
-        var (roleMcpIds, rolePromptIds, roleSkillIds) = await _config.GetRoleBindingsAsync(request.UserId, ct);
+        var (roleMcpIds, rolePromptIds, roleSkillIds, roleModelIds) = await _config.GetRoleBindingsAsync(request.UserId, ct);
         var settings = await _config.GetUserSettingsAsync(request.UserId, ct);
 
         var preferredProviderId = request.ProviderId ?? ParseGuid(GetSetting(settings, SettingProvider));
         var preferredModelId = request.ModelId ?? ParseGuid(GetSetting(settings, SettingModel));
         var requestedMcp = request.McpServerIds ?? ParseGuids(GetSetting(settings, SettingMcpServers));
         var requestedSkills = request.SkillIds ?? ParseGuids(GetSetting(settings, SettingSkills));
+
+        // ---------- LLM 模型角色绑定：服务端强制校验（未授权模型直接拒绝，管理员豁免；未绑定角色=全量可见） ----------
+        var isAdmin = await _config.IsAdminAsync(request.UserId, ct);
+        if (preferredModelId.HasValue && preferredModelId.Value != Guid.Empty
+            && !isAdmin && roleModelIds.Length > 0 && !roleModelIds.Contains(preferredModelId.Value))
+        {
+            yield return AgentEvent.Error("MODEL_NOT_AUTHORIZED", Texts.Get("MODEL_NOT_AUTHORIZED", lang), trace);
+            yield break;
+        }
 
         var servers = (await _config.GetEnabledMcpServersAsync(ct))
             .Where(s => roleMcpIds.Contains(s.Id) && (requestedMcp.Count == 0 || requestedMcp.Contains(s.Id)))
@@ -409,6 +418,7 @@ public sealed class ChatOrchestrator : IChatOrchestrator
             Tools = unifiedTools,
             PreferredProviderId = preferredProviderId,
             PreferredModelId = request.ModelId,
+            AllowedModelIds = isAdmin ? null : roleModelIds,
             ContextWindow = await GetContextWindowAsync(preferredProviderId, request.ModelId, ct),
             Lang = lang,
             // 思考模式：前端全局开关（默认启用）+ 强度（默认 high）；映射在客户端统一执行

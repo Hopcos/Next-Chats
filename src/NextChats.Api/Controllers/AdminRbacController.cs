@@ -88,6 +88,7 @@ public sealed class AdminRoleController(IAdminStore store, IConfigStore config, 
             mcpServerIds = r.McpServers.Select(m => m.Id).ToList(),
             promptIds = r.Prompts.Select(p => p.Id).ToList(),
             skillIds = r.Skills.Select(s => s.Id).ToList(),
+            modelIds = r.Models.Select(m => m.Id).ToList(),
             userCount = 0,
         }));
     }
@@ -129,16 +130,16 @@ public sealed class AdminRoleController(IAdminStore store, IConfigStore config, 
         }
     }
 
-    public sealed record BindingsInput(Guid[] McpServerIds, Guid[] PromptIds, Guid[] SkillIds);
+    public sealed record BindingsInput(Guid[] McpServerIds, Guid[] PromptIds, Guid[] SkillIds, Guid[] ModelIds);
 
-    /// <summary>角色 ↔ MCP/Prompt/Skill 绑定</summary>
+    /// <summary>角色 ↔ MCP/Prompt/Skill/LLM模型 绑定</summary>
     [HttpPut("{id:guid}/bindings")]
     public async Task<IActionResult> SetBindings(Guid id, [FromBody] BindingsInput input)
     {
-        await store.SetRoleBindingsAsync(id, input.McpServerIds, input.PromptIds, input.SkillIds);
+        await store.SetRoleBindingsAsync(id, input.McpServerIds, input.PromptIds, input.SkillIds, input.ModelIds);
         await config.InvalidateConfigCacheAsync();
         await audit.RecordAsync(AuditCategory.Admin, "ROLE.BINDINGS", $"trc_{Guid.NewGuid():N}"[..24], UserId, id.ToString(),
-            detail: new { mcpCount = input.McpServerIds.Length, promptCount = input.PromptIds.Length, skillCount = input.SkillIds.Length });
+            detail: new { mcpCount = input.McpServerIds.Length, promptCount = input.PromptIds.Length, skillCount = input.SkillIds.Length, modelCount = input.ModelIds.Length });
         return NoContent();
     }
 }

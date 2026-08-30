@@ -31,7 +31,10 @@ public interface IConfigStore
     Task<bool> IsAdminAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>用户在角色层可用的配置集合（缓存 + 失效）</summary>
-    Task<(Guid[] McpServerIds, Guid[] PromptIds, Guid[] SkillIds)> GetRoleBindingsAsync(Guid userId, CancellationToken ct = default);
+    Task<(Guid[] McpServerIds, Guid[] PromptIds, Guid[] SkillIds, Guid[] ModelIds)> GetRoleBindingsAsync(Guid userId, CancellationToken ct = default);
+
+    /// <summary>用户角色绑定授权的 LLM 模型集合（用于模型可见性过滤）</summary>
+    Task<Guid[]> GetRoleModelIdsAsync(Guid userId, CancellationToken ct = default);
 
     /// <summary>某个 MCP Server 是否对该用户角色开放</summary>
     Task<bool> CanAccessMcpAsync(Guid userId, Guid mcpServerId, CancellationToken ct = default);

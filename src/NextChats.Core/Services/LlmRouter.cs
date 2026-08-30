@@ -68,12 +68,12 @@ public sealed class LlmRouter : ILlmRouter
         return selected;
     }
 
-    public async Task<ILlmClient> SelectClientAsync(Guid? preferredId = null, Guid? preferredModelId = null, string? lang = null, CancellationToken ct = default)
+    public async Task<ILlmClient> SelectClientAsync(Guid? preferredId = null, Guid? preferredModelId = null, string? lang = null, CancellationToken ct = default, Guid[]? allowedModelIds = null)
     {
         var provider = await SelectAsync(preferredId, ct);
         try
         {
-            return CreateClient(provider, SelectModel(provider, preferredModelId), lang);
+            return CreateClient(provider, SelectModel(provider, preferredModelId, allowedModelIds), lang);
         }
         catch (OperationCanceledException)
         {
@@ -87,7 +87,7 @@ public sealed class LlmRouter : ILlmRouter
             {
                 try
                 {
-                    return CreateClient(fallback, SelectModel(fallback, null), lang);
+                    return CreateClient(fallback, SelectModel(fallback, null, allowedModelIds), lang);
                 }
                 catch
                 {
@@ -108,13 +108,18 @@ public sealed class LlmRouter : ILlmRouter
         return CreateClient(provider, SelectModel(provider, modelId));
     }
 
-    /// <summary>供应商内选择模型：首选模型 → 启用模型按优先级（小优先）→ 无可用模型抛异常</summary>
-    private static LlmModel SelectModel(LlmProvider provider, Guid? preferredModelId)
+    /// <summary>供应商内选择模型：首选模型 → 启用模型按优先级（小优先）→ 无可用模型抛异常；
+    /// allowedModelIds 非空时为角色绑定白名单（未授权模型不可选，首选不在白名单内则回落白名单内优先级最高的启用模型）</summary>
+    private static LlmModel SelectModel(LlmProvider provider, Guid? preferredModelId, Guid[]? allowedModelIds = null)
     {
         var pool = provider.Models.Where(m => m.Enabled).OrderBy(m => m.Priority).ToList();
+        if (allowedModelIds is { Length: > 0 })
+        {
+            pool = pool.Where(m => allowedModelIds.Contains(m.Id)).ToList();
+        }
         if (pool.Count == 0)
         {
-            throw new LlmUnavailableException($"provider '{provider.Name}' has no enabled model");
+            throw new LlmUnavailableException($"provider '{provider.Name}' has no enabled model for current role");
         }
         if (preferredModelId.HasValue)
         {
