@@ -1,16 +1,26 @@
 <script setup lang="ts">
-import { reactive, ref } from 'vue'
+import { onMounted, reactive, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { kernel } from '@/kernel'
+import type { AuthProviderDto } from '@/api/types'
 
 const { t } = useI18n()
 const router = useRouter()
 const route = useRoute()
 const loading = ref(false)
+const authProviders = ref<AuthProviderDto[]>([])
 
-const form = reactive({ username: 'admin', password: 'admin123' })
+const form = reactive({ username: 'admin', password: 'admin123', authType: 'default' })
+
+onMounted(async () => {
+  try {
+    authProviders.value = await kernel.auth.fetchAuthProviders()
+  } catch {
+    authProviders.value = []
+  }
+})
 
 async function submit() {
   if (!form.username || !form.password) {
@@ -19,7 +29,7 @@ async function submit() {
   }
   loading.value = true
   try {
-    await kernel.auth.login(form.username, form.password)
+    await kernel.auth.login(form.username, form.password, form.authType)
     await kernel.settings.pullFromServer()
     await kernel.catalog.load()
     ElMessage.success(t('login.success'))
@@ -42,6 +52,12 @@ async function submit() {
       </div>
       <p class="tagline nc-dim">{{ t('login.tagline') }}</p>
       <el-form label-position="top" @keyup.enter="submit">
+        <el-form-item v-if="authProviders.length" :label="t('login.authType')">
+          <el-radio-group v-model="form.authType" class="auth-types">
+            <el-radio value="default">{{ t('login.authDefault') }}</el-radio>
+            <el-radio v-for="p in authProviders" :key="p.name" :value="p.name">{{ p.name }}</el-radio>
+          </el-radio-group>
+        </el-form-item>
         <el-form-item :label="t('login.username')">
           <el-input v-model="form.username" :placeholder="t('login.username')" autocomplete="username" />
         </el-form-item>
@@ -92,6 +108,12 @@ async function submit() {
 .tagline {
   margin: 6px 0 24px;
   font-size: 13px;
+}
+
+.auth-types {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px 12px;
 }
 
 .submit {

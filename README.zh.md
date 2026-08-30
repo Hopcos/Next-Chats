@@ -36,7 +36,8 @@
 erDiagram
     APP_USER {
         Guid id PK
-        string username UK 
+        string auth_type "default=本地密码账号; acs/ucs…=内部鉴权账号"
+        string username "与 auth_type 组合唯一"
         string display_name "显示名"
         string email "邮箱"
         string password_hash "PBKDF2 哈希"
@@ -86,13 +87,42 @@ erDiagram
         string kind "类型"
         string base_url 
         string api_key_encrypted "AES-GCM 加密"
-        string model 
-        int context_window "上下文窗口"
         int priority "优先级"
         bool enabled 
-        bool is_vision "视觉支持"
         bool is_healthy "健康"
         datetime created_at
+        datetime updated_at
+    }
+    LLM_MODEL {
+        Guid id PK
+        Guid provider_id FK "所属供应商"
+        string name "模型名"
+        bool enabled "启用"
+        bool is_vision "视觉支持"
+        int context_window "上下文窗口"
+        decimal price_in_per_1k "千输入成本"
+        decimal price_out_per_1k "千输出成本"
+        int priority "优先级"
+        datetime created_at
+    }
+    INTERNAL_AUTH_PROVIDER {
+        Guid id PK
+        string name "acs / ucs…，唯一"
+        string api "鉴权中心地址"
+        string http_method "HTTP 方法"
+        string request_format "body(application/json)"
+        string username_field "请求体用户名字段"
+        string password_field "请求体密码字段"
+        bool enabled "启用"
+        int timeout_seconds "超时(秒)"
+        datetime created_at
+    }
+    INTERNAL_AUTH_SUCCESS_RULE {
+        Guid id PK
+        Guid provider_id FK
+        string field "JSON 字段路径，如 sessionID"
+        string operator "NotEmpty / Equals"
+        string expected_value "固定值"
     }
     MCP_SERVER {
         Guid id PK 
@@ -185,6 +215,10 @@ erDiagram
     APP_ROLE }o--o{ MCP_SERVER : "可用 (role_mcp_servers)"
     APP_ROLE }o--o{ PROMPT : "可用 (role_prompts)"
     APP_ROLE }o--o{ SKILL : "可用 (role_skills)"
+    APP_ROLE }o--o{ LLM_MODEL : "可用 (role_model_bindings)"
+    APP_ROLE }o--o{ INTERNAL_AUTH_PROVIDER : "默认角色 (internal_auth_provider_roles)"
+    LLM_PROVIDER ||--o{ LLM_MODEL : "模型"
+    INTERNAL_AUTH_PROVIDER ||--o{ INTERNAL_AUTH_SUCCESS_RULE : "成功判定规则"
     MCP_SERVER ||--o{ MCP_CATALOG_ITEM : "自动带出目录"
     CHAT_SESSION ||--o{ CHAT_MESSAGE : "包含"
     CHAT_SESSION }o--o| LLM_PROVIDER : "使用模型"
@@ -206,7 +240,9 @@ flowchart LR
     subgraph Api["NextChats.Api（ASP.NET Core）"]
         Ctl[控制器 / RBAC / 审计] --> Mod[错误本地化中间件]
         Ctl --> Orch{{ChatOrchestrator 编排}}
-        Ctl --> Adm[管理端：供应商 / MCP / Prompt / Skill / RBAC / 审批]
+        Ctl --> Adm[管理端：供应商 / MCP / Prompt / Skill / RBAC / 内部鉴权 / 审批]
+        Ctl --> Auth[认证：default 密码 / 内部鉴权]
+        Auth -->|HTTP| IA[(内部鉴权中心 acs / ucs…)]
     end
 
     Orch --> Loop{{AgentLoopEngine 推理循环}}
@@ -308,6 +344,7 @@ next-chats/
 │   ├── NextChats.Infrastructure/ # EF Core 数据 + 缓存 + 安全服务（可替换实现）
 │   └── NextChats.Api/            # Web API（SSE 流、管理端、RBAC、审计、指标、i18n）
 ├── samples/McpDemoServer/        # 演示 MCP Server（Streamable HTTP）
+├── e2e/                          # 内部鉴权 E2E（mock 鉴权中心 + PowerShell 套件）
 └── web/                          # Vue 3 + Cordis 前端
     ├── src/i18n/                 # en / zh 分域语言包
     └── scripts/smoke*.mjs        # 端到端冒烟脚本（Node fetch 流式读取）
@@ -329,6 +366,37 @@ cd web && npm install && npm run dev
 
 ## 核心设计
 
+### 认证（default 账号 + 内部鉴权）
+- **default（系统账号）**：本地密码账号（PBKDF2-SHA256），由管理员在「用户管理」创建；登录页默认选择 `default`。
+- **内部鉴权（acs / ucs…）**：管理员在「内部鉴权管理」维护鉴权中心配置 —— API 地址 / HTTP 方法 / 请求体中账号、密码的字段名（`body(application/json)`）/ 成功响应判定规则（一个或多个字段**不为空**或**等于固定值**，支持点路径如 `data.sessionID`）/ 该鉴权类别的**默认角色**（多选）。
+- 登录页出现登录方式单选（`default` + 已启用的鉴权方式，来源 `GET /api/auth/providers`）；选择内部鉴权后，后端按配置调用鉴权中心验证账号密码。
+- 鉴权通过后**自动建号或直接取号**：内部用户唯一性 = `(AuthType, Username)`（default 与 acs 账号可同名）；已存在则直接读取其角色权限，不存在则自动创建（无密码、用户名=显示名、状态正常、绑定鉴权配置的默认角色）。
+- 内部鉴权用户与默认用户共用**同一套 JWT** 机制，后续聊天 / 目录 / 权限全部一致（角色 → 模型/MCP/Prompt/Skill 绑定决定可见范围）。
+
+```mermaid
+sequenceDiagram
+    participant U as 用户（浏览器）
+    participant C as AuthController
+    participant P as InternalAuthProvider 配置
+    participant A as 鉴权中心（外部）
+    participant DB as Users 表
+
+    U->>C: POST /api/auth/login { authType: "acs", username, password }
+    C->>P: 读取配置（api / 字段 / 成功规则 / 默认角色）
+    C->>A: HTTP POST api { username_field: …, password_field: … }
+    A-->>C: 响应 JSON
+    C->>C: 逐条判定成功规则（字段非空 / 等于固定值）
+    alt 规则满足
+        C->>DB: 按 (AuthType=acs, Username) 查用户
+        alt 不存在
+            C->>DB: 自动建号（无密码、绑定默认角色）
+        end
+        C-->>U: 签发 JWT（与 default 账号同一套）+ 用户信息
+    else 规则不满足 / 鉴权中心异常
+        C-->>U: 401（AUTH_INVALID_CREDENTIALS / AUTH_PROVIDER_ERROR）
+    end
+```
+
 ### 编排层（Core）
 - **有效交集工具集**：`角色绑定 ∩ 用户启用 ∩ MCP 全局启用` 取交集，逐用户隔离。
 - **活跃 Skill 匹配**：Skill 以「元工具」形式暴露给模型（`skill_<slug>`），指令按需懒加载，避免 token 爆炸。
@@ -346,7 +414,8 @@ cd web && npm install && npm run dev
 - LLM 供应商（启用开关 / model / endpoint / api-key 加密 / temperature / context-window）
 - MCP 服务器（Name / Endpoint / Headers JSON 加密保存；**「获取」自动带出** tools/prompts/resources 并以 Schema 落库；逐项禁用）
 - Prompt 多套、Skill 多套（可插拔懒加载）
-- RBAC：用户 / 角色；角色 ↔ MCP / Prompt / Skill 绑定
+- RBAC：用户 / 角色；角色 ↔ MCP / Prompt / Skill / **LLM 模型** 绑定 —— 绑定后角色的用户仅可见/可选绑定内的模型，直接调 API 传未授权模型 ID 也会在服务端拒绝（`MODEL_NOT_AUTHORIZED`）
+- **内部鉴权管理**：鉴权中心配置（acs / ucs…），含成功响应判定规则与默认角色（详见上文「认证」）
 
 ### 可观测性与成本
 - `trace_id`（`trc_...`）贯穿 Orchestration / LLM / MCP / 审计；token 进出统计；指标：TTFT、tokens、cost、工具时延、审批数（`/api/admin/metrics/usage`）。
@@ -362,11 +431,15 @@ cd web && npm install && npm run dev
 - 后端：所有用户可见文案集中在单一字典 `src/NextChats.Core/Localization/Texts.cs`（中英双语），代码中不再硬编码界面文案；错误响应经 `X-Lang` 请求头（或 `Accept-Language`）本地化，非浏览器客户端（如 `curl -H "X-Lang: zh"`）同样获得对应语言；种子数据（角色/Prompt/Skill/演示供应商）为英文。
 - 本文档与 [README.md（英文）](./README.md) 顶部互链。
 
-## 冒烟验证（web/scripts/）
+## 冒烟验证（web/scripts/ + e2e/）
 
 ```bash
 node scripts/smoke.mjs          # 登录 → 建会话 → SSE 流式对话 → 消息持久化 → 指标
 node scripts/smoke-tools.mjs    # ReAct 工具调用（tool:echo）→ 危险工具审批流（danger:delete_all）
+
+# 内部鉴权 E2E（mock 鉴权中心 + PowerShell 套件，见 e2e/README.md）
+node e2e/mock-auth.js           # 启动 mock 鉴权中心（127.0.0.1:53131）
+powershell -File e2e/run-internal-auth-e2e.ps1   # 断言 CRUD / 登录方式 / 自动建号 / 唯一性 / 角色目录
 ```
 
 ## MCP 参考

@@ -8,5 +8,7 @@ export default {
     needCredentials: 'Please enter username and password',
     success: 'Signed in successfully',
     failed: 'Sign-in failed',
+    authType: 'Sign-in method',
+    authDefault: 'default (system account)',
   },
 }

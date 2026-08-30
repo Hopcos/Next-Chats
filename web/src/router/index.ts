@@ -22,6 +22,7 @@ export const router = createRouter({
         { path: 'skills', component: () => import('@/views/admin/AdminSkillsView.vue') },
         { path: 'users', component: () => import('@/views/admin/AdminUsersView.vue') },
         { path: 'roles', component: () => import('@/views/admin/AdminRolesView.vue') },
+        { path: 'internal-auth', component: () => import('@/views/admin/AdminInternalAuthView.vue') },
         { path: 'approvals', component: () => import('@/views/admin/AdminApprovalsView.vue') },
         { path: 'audit', component: () => import('@/views/admin/AdminAuditView.vue') },
         { path: 'metrics', component: () => import('@/views/admin/AdminMetricsView.vue') },

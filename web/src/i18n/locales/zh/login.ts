@@ -8,5 +8,7 @@ export default {
     needCredentials: '请输入用户名和密码',
     success: '登录成功',
     failed: '登录失败',
+    authType: '登录方式',
+    authDefault: 'default（系统账号）',
   },
 }

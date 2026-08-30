@@ -7,6 +7,12 @@ export interface UserProfile {
   email?: string
   roles: string[]
   isAdmin: boolean
+  /** 账号类型：default=本地密码账号；其他（acs…）=内部鉴权账号 */
+  authType?: string
+}
+
+export interface AuthProviderDto {
+  name: string
 }
 
 export interface LoginResponse {
@@ -119,9 +125,36 @@ export interface UserDto {
   displayName?: string
   email?: string
   status: string
+  /** 账号类型：default=本地密码账号；其他（acs…）=内部鉴权账号 */
+  authType?: string
   createdAt: string
   lastLoginAt?: string
   roles: { id: string; name: string; code: string }[]
+}
+
+export type InternalAuthRuleOperator = 'NotEmpty' | 'Equals'
+
+export interface InternalAuthSuccessRuleDto {
+  id?: string
+  field: string
+  operator: InternalAuthRuleOperator
+  expectedValue?: string
+}
+
+export interface InternalAuthProviderDto {
+  id: string
+  name: string
+  api: string
+  httpMethod: string
+  requestFormat: string
+  usernameField: string
+  passwordField: string
+  enabled: boolean
+  timeoutSeconds: number
+  createdAt: string
+  updatedAt: string
+  successRules: InternalAuthSuccessRuleDto[]
+  defaultRoleIds: string[]
 }
 
 export interface ChatSessionDto {

@@ -15,7 +15,8 @@ public sealed class AdminUserController(IAdminStore store, ISecurityService secu
         var users = await store.ListUsersAsync();
         return Ok(users.Select(u => new
         {
-            u.Id, u.Username, u.DisplayName, u.Email, status = u.Status.ToString(), u.CreatedAt, u.LastLoginAt,
+            u.Id, u.Username, u.DisplayName, u.Email, status = u.Status.ToString(), authType = u.AuthType,
+            u.CreatedAt, u.LastLoginAt,
             roles = u.Roles.Select(r => new { r.Id, r.Name, r.Code }).ToList(),
         }));
     }

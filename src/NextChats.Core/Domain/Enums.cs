@@ -113,3 +113,13 @@ public enum PolicyVerdict
     /// <summary>需人工审批</summary>
     RequireApproval = 2,
 }
+
+/// <summary>内部鉴权成功判定操作符</summary>
+public enum SuccessRuleOperator
+{
+    /// <summary>字段存在且不为空（null / 空字符串 / 空数组 / 空对象 视为空）</summary>
+    NotEmpty = 0,
+
+    /// <summary>字段值等于固定值（字符串比较）</summary>
+    Equals = 1,
+}

@@ -10,6 +10,12 @@ public class AppUser
 
     [Required, MaxLength(64)] public string Username { get; set; } = null!;
 
+    /// <summary>
+    /// 账号类型：default=系统本地账号（密码登录）；其他值（如 acs）=内部鉴权账号（由鉴权中心验证，无密码）。
+    /// 用户唯一性 = (AuthType, Username) 组合唯一。
+    /// </summary>
+    [MaxLength(64)] public string AuthType { get; set; } = "default";
+
     [MaxLength(64)] public string? DisplayName { get; set; }
 
     [MaxLength(128)] public string? Email { get; set; }
@@ -55,6 +61,66 @@ public class AppRole
 
     /// <summary>角色可用的 LLM 模型（角色绑定后，拥有该角色的用户才能看到并选择这些模型）</summary>
     public List<LlmModel> Models { get; set; } = [];
+
+    /// <summary>内部鉴权配置（作为该鉴权账号登录时的默认角色）</summary>
+    public List<InternalAuthProvider> InternalAuthProviders { get; set; } = [];
+}
+
+/// <summary>内部鉴权配置（如 acs / ucs）：调用鉴权中心验证账号密码，通过后自动建号并以 JWT 登录</summary>
+public class InternalAuthProvider
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>鉴权名称（acs / ucs…），唯一；也是登录方式标识与内部鉴权用户的账号类型</summary>
+    [Required, MaxLength(64)] public string Name { get; set; } = null!;
+
+    /// <summary>鉴权中心地址（如 http://acs2-stage.everymatrix.local/login）</summary>
+    [Required, MaxLength(512)] public string Api { get; set; } = null!;
+
+    /// <summary>HTTP 方法（POST / GET / PUT…）</summary>
+    [Required, MaxLength(16)] public string HttpMethod { get; set; } = "POST";
+
+    /// <summary>请求体格式：BodyJson = body(application/json)</summary>
+    [Required, MaxLength(32)] public string RequestFormat { get; set; } = "BodyJson";
+
+    /// <summary>鉴权中心请求体中用户名对应的字段名（值来源为登录时输入的账号）</summary>
+    [Required, MaxLength(64)] public string UsernameField { get; set; } = "username";
+
+    /// <summary>鉴权中心请求体中密码对应的字段名（值来源为登录时输入的密码）</summary>
+    [Required, MaxLength(64)] public string PasswordField { get; set; } = "password";
+
+    public bool Enabled { get; set; } = true;
+
+    /// <summary>调用鉴权中心的超时（秒）</summary>
+    public int TimeoutSeconds { get; set; } = 15;
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>鉴权成功判定规则（AND 语义：全部满足才算成功）</summary>
+    public List<InternalAuthSuccessRule> SuccessRules { get; set; } = [];
+
+    /// <summary>基于此鉴权类别登录的内部用户默认绑定的角色（多选）</summary>
+    public List<AppRole> DefaultRoles { get; set; } = [];
+}
+
+/// <summary>内部鉴权成功判定规则：定义响应中的某个/多个字段不为空，或等于固定值</summary>
+public class InternalAuthSuccessRule
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid ProviderId { get; set; }
+
+    /// <summary>响应 JSON 字段（支持点路径，如 sessionID / data.sessionID）</summary>
+    [Required, MaxLength(128)] public string Field { get; set; } = null!;
+
+    public SuccessRuleOperator Operator { get; set; } = SuccessRuleOperator.NotEmpty;
+
+    /// <summary>Operator=Equals 时用于比较的固定值</summary>
+    [MaxLength(512)] public string? ExpectedValue { get; set; }
+
+    public InternalAuthProvider? Provider { get; set; }
 }
 
 /// <summary>LLM 供应商配置（Server 端统一管理，多供应商 + 基础信息 + 模型子表）</summary>

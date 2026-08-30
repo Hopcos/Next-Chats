@@ -5,6 +5,7 @@ import { http, streamPost, tokenStore, translateError } from '@/api/http'
 import { i18n } from '@/i18n'
 import type {
   AgentEventDto,
+  AuthProviderDto,
   ChatMessageDto,
   ChatSessionDto,
   ChatSettings,
@@ -228,12 +229,21 @@ export class AuthService extends Service {
     super(ctx, 'auth')
   }
 
-  async login(username: string, password: string) {
-    const res = await http.post<{ token: string; user: UserProfile }>('/api/auth/login', { username, password })
+  async login(username: string, password: string, authType?: string) {
+    const res = await http.post<{ token: string; user: UserProfile }>('/api/auth/login', {
+      username,
+      password,
+      authType: authType || 'default',
+    })
     tokenStore.set(res.token)
     this.state.user = res.user
     this.state.ready = true
     this.ctx.emit('auth:changed', res.user)
+  }
+
+  /** 登录页可选的鉴权方式（default 恒存在；其余为已启用的内部鉴权，如 acs / ucs） */
+  async fetchAuthProviders() {
+    return http.get<AuthProviderDto[]>('/api/auth/providers')
   }
 
   /** 登录失效（401）时清空会话状态：避免守卫误判“已登录”导致跳转死锁 */

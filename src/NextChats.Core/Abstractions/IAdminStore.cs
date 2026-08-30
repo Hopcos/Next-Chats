@@ -1,3 +1,4 @@
+using NextChats.Core.Domain;
 using NextChats.Core.Entities;
 
 namespace NextChats.Core.Abstractions;
@@ -11,6 +12,9 @@ public interface IAdminStore
     Task<AppUser?> GetUserAsync(Guid id, bool includeRoles = false, CancellationToken ct = default);
 
     Task<AppUser?> GetUserByNameAsync(string username, CancellationToken ct = default);
+
+    /// <summary>按 (AuthType, Username) 组合唯一查询用户（内部鉴权用户与 default 用户可同名）</summary>
+    Task<AppUser?> GetUserAsync(string authType, string username, bool includeRoles = true, CancellationToken ct = default);
 
     Task<AppUser> CreateUserAsync(AppUser user, IEnumerable<Guid> roleIds, CancellationToken ct = default);
 
@@ -90,6 +94,20 @@ public interface IAdminStore
     Task UpdateSkillAsync(Skill skill, CancellationToken ct = default);
 
     Task DeleteSkillAsync(Guid id, CancellationToken ct = default);
+
+    // ---------- 内部鉴权（acs / ucs…） ----------
+    Task<InternalAuthProvider?> GetInternalAuthProviderByNameAsync(string name, CancellationToken ct = default);
+
+    Task<IReadOnlyList<InternalAuthProvider>> ListInternalAuthProvidersAsync(CancellationToken ct = default);
+
+    /// <summary>新建（id=Guid.Empty）或整体更新一条内部鉴权配置（成功判定规则与默认角色全量替换）</summary>
+    Task<InternalAuthProvider> SaveInternalAuthProviderAsync(
+        Guid id, string name, string api, string httpMethod, string requestFormat,
+        string usernameField, string passwordField, bool enabled, int timeoutSeconds,
+        IReadOnlyList<(string Field, SuccessRuleOperator Operator, string? ExpectedValue)> successRules,
+        Guid[] roleIds, CancellationToken ct = default);
+
+    Task DeleteInternalAuthProviderAsync(Guid id, CancellationToken ct = default);
 
     // ---------- 审计 ----------
     Task<IReadOnlyList<AuditLog>> QueryAuditLogsAsync(Guid? userId, DateTimeOffset from, DateTimeOffset to, int take, CancellationToken ct = default);

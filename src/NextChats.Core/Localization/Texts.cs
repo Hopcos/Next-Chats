@@ -13,6 +13,8 @@ public static class Texts
         // ---------- 认证 / 通用 ----------
         ["AUTH_INVALID_CREDENTIALS"] = ("Invalid username or password", "用户名或密码错误"),
         ["AUTH_USER_NOT_FOUND"] = ("User not found", "用户不存在"),
+        ["AUTH_PROVIDER_NOT_FOUND"] = ("This sign-in method is not configured or has been disabled", "该鉴权方式未配置或已禁用"),
+        ["AUTH_PROVIDER_ERROR"] = ("Sign-in service is unavailable, please try again later", "鉴权服务暂时不可用，请稍后重试"),
         ["AUTH_EXPIRED"] = ("Session expired, please sign in again", "登录已过期，请重新登录"),
         ["SESSION_NOT_FOUND"] = ("Session not found or deleted", "会话不存在或已被删除"),
         ["MESSAGE_NOT_FOUND"] = ("Message not found or already deleted", "消息不存在或已被删除"),
@@ -73,6 +75,12 @@ public static class Texts
         ["APPROVAL_NOT_PENDING"] = ("This approval has already been processed or expired", "该审批已处理或已过期"),
         ["PASSWORD_REQUIRED"] = ("Initial password is required", "初始密码必填"),
         ["CANNOT_DELETE_SELF"] = ("You cannot delete the currently signed-in account", "不能删除当前登录账号"),
+        ["INTERNAL_AUTH_NOT_FOUND"] = ("Authentication method not found", "鉴权配置不存在"),
+        ["INTERNAL_AUTH_FIELDS_REQUIRED"] = ("Authentication name and API endpoint are required", "鉴权名称与鉴权中心地址必填"),
+        ["INTERNAL_AUTH_NAME_EXISTS"] = ("An authentication method with this name already exists", "已存在同名鉴权配置"),
+        ["SUCCESS_RULE_REQUIRED"] = ("At least one success-response rule is required", "至少需要配置一条鉴权成功判定规则"),
+        ["SUCCESS_RULE_FIELD_REQUIRED"] = ("The success-response rule field cannot be empty", "鉴权成功判定规则的字段不能为空"),
+        ["SUCCESS_RULE_OPERATOR_INVALID"] = ("Invalid success-response rule operator", "鉴权成功判定规则的操作符不合法"),
 
         // ---------- Agent 循环（工具回灌给模型 / 事件文案，用户可见） ----------
         ["TOOL_NOT_FOUND"] = ("Tool {0} does not exist or is disabled. Tell the user and switch to an available tool.", "工具 {0} 不存在或未启用。请向用户说明并改用可用工具。"),

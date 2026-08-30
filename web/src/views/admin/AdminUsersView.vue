@@ -89,6 +89,13 @@ onMounted(load)
     </div>
     <el-table :data="users" v-loading="loading" size="small" stripe>
       <el-table-column prop="username" :label="t('admin.users.username')" width="140" />
+      <el-table-column :label="t('admin.users.authType')" width="100">
+        <template #default="{ row }">
+          <el-tag size="small" :type="row.authType && row.authType !== 'default' ? 'warning' : 'info'">
+            {{ row.authType && row.authType !== 'default' ? row.authType : t('admin.users.authTypeDefault') }}
+          </el-tag>
+        </template>
+      </el-table-column>
       <el-table-column prop="displayName" :label="t('admin.users.displayName')" width="120" />
       <el-table-column prop="email" :label="t('admin.users.email')" min-width="160" />
       <el-table-column :label="t('admin.users.roles')" min-width="160">

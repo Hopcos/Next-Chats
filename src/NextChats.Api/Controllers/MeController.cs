@@ -26,6 +26,7 @@ public sealed class MeController(
             displayName = user.DisplayName ?? user.Username,
             email = user.Email,
             roles,
+            authType = user.AuthType,
             isAdmin = roles.Contains("admin"),
         });
     }

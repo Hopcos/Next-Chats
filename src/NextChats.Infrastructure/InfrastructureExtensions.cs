@@ -112,6 +112,50 @@ public static class InfrastructureExtensions
                 );
                 CREATE INDEX "IX_RoleModelBindings_ModelsId" ON "RoleModelBindings" ("ModelsId");
                 """);
+            // ---------- 内部鉴权：账号类型列 + (AuthType, Username) 组合唯一索引 ----------
+            await AddColumnIfMissingAsync(conn, "Users", "AuthType", "TEXT NOT NULL DEFAULT 'default'");
+            await RebuildUserUniqueIndexAsync(conn);
+            await AddTableIfMissingAsync(conn, "InternalAuthProviders", """
+                CREATE TABLE "InternalAuthProviders" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_InternalAuthProviders" PRIMARY KEY,
+                    "Name" TEXT NOT NULL,
+                    "Api" TEXT NOT NULL,
+                    "HttpMethod" TEXT NOT NULL DEFAULT 'POST',
+                    "RequestFormat" TEXT NOT NULL DEFAULT 'BodyJson',
+                    "UsernameField" TEXT NOT NULL DEFAULT 'username',
+                    "PasswordField" TEXT NOT NULL DEFAULT 'password',
+                    "Enabled" INTEGER NOT NULL DEFAULT 1,
+                    "TimeoutSeconds" INTEGER NOT NULL DEFAULT 15,
+                    "CreatedAt" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL
+                );
+                CREATE UNIQUE INDEX "IX_InternalAuthProviders_Name" ON "InternalAuthProviders" ("Name");
+                """);
+            await AddTableIfMissingAsync(conn, "InternalAuthSuccessRules", """
+                CREATE TABLE "InternalAuthSuccessRules" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_InternalAuthSuccessRules" PRIMARY KEY,
+                    "ProviderId" TEXT NOT NULL,
+                    "Field" TEXT NOT NULL,
+                    "Operator" INTEGER NOT NULL,
+                    "ExpectedValue" TEXT,
+                    CONSTRAINT "FK_InternalAuthSuccessRules_InternalAuthProviders_ProviderId"
+                        FOREIGN KEY ("ProviderId") REFERENCES "InternalAuthProviders" ("Id") ON DELETE CASCADE
+                );
+                CREATE INDEX "IX_InternalAuthSuccessRules_ProviderId" ON "InternalAuthSuccessRules" ("ProviderId");
+                """);
+            // 内部鉴权 ↔ 默认角色 多对多（列名与 EF UsingEntity 显式配置一致：ProviderId / RoleId）
+            await AddTableIfMissingAsync(conn, "InternalAuthProviderRoleBindings", """
+                CREATE TABLE "InternalAuthProviderRoleBindings" (
+                    "ProviderId" TEXT NOT NULL,
+                    "RoleId" TEXT NOT NULL,
+                    CONSTRAINT "PK_InternalAuthProviderRoleBindings" PRIMARY KEY ("ProviderId", "RoleId"),
+                    CONSTRAINT "FK_InternalAuthProviderRoleBindings_InternalAuthProviders_ProviderId"
+                        FOREIGN KEY ("ProviderId") REFERENCES "InternalAuthProviders" ("Id") ON DELETE CASCADE,
+                    CONSTRAINT "FK_InternalAuthProviderRoleBindings_Roles_RoleId"
+                        FOREIGN KEY ("RoleId") REFERENCES "Roles" ("Id") ON DELETE CASCADE
+                );
+                CREATE INDEX "IX_InternalAuthProviderRoleBindings_RoleId" ON "InternalAuthProviderRoleBindings" ("RoleId");
+                """);
         }
         finally
         {
@@ -156,5 +200,23 @@ public static class InfrastructureExtensions
         await using var drop = conn.CreateCommand();
         drop.CommandText = $"DROP TABLE \"{table}\"";
         await drop.ExecuteNonQueryAsync();
+    }
+
+    /// <summary>
+    /// 用户唯一性从「用户名」升级为「(AuthType, Username)」：
+    /// 删除旧的单列唯一索引，重建组合唯一索引（幂等；全新库由 EnsureCreated 直接建组合索引，此处跳过）。
+    /// </summary>
+    private static async Task RebuildUserUniqueIndexAsync(System.Data.Common.DbConnection conn)
+    {
+        await using var check = conn.CreateCommand();
+        check.CommandText = "SELECT COUNT(*) FROM sqlite_master WHERE type='index' AND name = 'IX_Users_AuthType_Username'";
+        var exists = Convert.ToInt32(await check.ExecuteScalarAsync()) > 0;
+        if (exists) return;
+        await using var drop = conn.CreateCommand();
+        drop.CommandText = "DROP INDEX IF EXISTS \"IX_Users_Username\"";
+        await drop.ExecuteNonQueryAsync();
+        await using var create = conn.CreateCommand();
+        create.CommandText = "CREATE UNIQUE INDEX \"IX_Users_AuthType_Username\" ON \"Users\" (\"AuthType\", \"Username\")";
+        await create.ExecuteNonQueryAsync();
     }
 }
