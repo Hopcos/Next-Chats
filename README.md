@@ -7,7 +7,7 @@
   <p><em>Chat window (conversation / thinking / tools / topic rail)</em></p>
   <br/>
   <img src="docs/admin-window.png" alt="Admin console" width="88%" style="border-radius:8px;border:1px solid #333" />
-  <p><em>Admin console (LLM providers / MCP / approvals / audit / usage)</em></p>
+  <p><em>Admin console (LLM providers / MCP / RBAC / internal auth / approvals / audit / usage)</em></p>
 </div>
 
 A B/S multimodal AI chat platform based on the **DeepSeek Harness principles**: LLM + MCP (Model Context Protocol) + Skill plugin orchestration, with a **Cordis**-driven, Three.js-powered 3D frontend.
@@ -19,16 +19,6 @@ A B/S multimodal AI chat platform based on the **DeepSeek Harness principles**: 
 ---
 
 ## Architecture & Flows
-
-### Screenshots
-
-<div align="center">
-  <img src="docs/chat-window.png" alt="Chat window" width="88%" style="border-radius:8px;border:1px solid #333" />
-  <p><em>Chat window (conversation / thinking / tools / topic rail)</em></p>
-  <br/>
-  <img src="docs/admin-window.png" alt="Admin console" width="88%" style="border-radius:8px;border:1px solid #333" />
-  <p><em>Admin console (LLM providers / MCP / approvals / audit / usage)</em></p>
-</div>
 
 ### Data Model (ER)
 
