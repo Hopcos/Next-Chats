@@ -214,7 +214,7 @@ export default {
       name: '鉴权名称',
       namePlaceholder: '例如 acs / ucs（唯一）',
       api: '鉴权中心 API',
-      apiPlaceholder: '例如 http://acs2-stage.everymatrix.local/login',
+      apiPlaceholder: '例如 http://acs2-stage.demo.local/login',
       httpMethod: '请求方式',
       requestFormat: '请求体：{fmt}',
       credFields: '账号/密码字段',

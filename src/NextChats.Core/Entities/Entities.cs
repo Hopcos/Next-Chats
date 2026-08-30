@@ -74,7 +74,7 @@ public class InternalAuthProvider
     /// <summary>鉴权名称（acs / ucs…），唯一；也是登录方式标识与内部鉴权用户的账号类型</summary>
     [Required, MaxLength(64)] public string Name { get; set; } = null!;
 
-    /// <summary>鉴权中心地址（如 http://acs2-stage.everymatrix.local/login）</summary>
+    /// <summary>鉴权中心地址（如 http://acs2-stage.demo.local/login）</summary>
     [Required, MaxLength(512)] public string Api { get; set; } = null!;
 
     /// <summary>HTTP 方法（POST / GET / PUT…）</summary>

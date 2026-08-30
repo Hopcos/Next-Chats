@@ -214,7 +214,7 @@ export default {
       name: 'Auth Name',
       namePlaceholder: 'e.g., acs / ucs (unique)',
       api: 'Auth Center API',
-      apiPlaceholder: 'e.g., http://acs2-stage.everymatrix.local/login',
+      apiPlaceholder: 'e.g., http://acs2-stage.demo.local/login',
       httpMethod: 'HTTP Method',
       requestFormat: 'Request body: {fmt}',
       credFields: 'Credential Fields',
