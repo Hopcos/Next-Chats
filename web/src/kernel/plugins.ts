@@ -12,13 +12,14 @@ import type {
   LoginResponse,
   UserProfile,
 } from '@/api/types'
+import { uuid } from '@/utils/uuid'
 
 export type ApprovalDecision = 'Approved' | 'Rejected'
 
 // ---------------------------------------------------------------- 工具
 
 function uid(): string {
-  return crypto.randomUUID()
+  return uuid()
 }
 
 const nowIso = () => new Date().toISOString()

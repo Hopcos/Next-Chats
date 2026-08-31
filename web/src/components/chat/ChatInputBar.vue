@@ -4,6 +4,7 @@ import { useI18n } from 'vue-i18n'
 import { kernel } from '@/kernel'
 import { http } from '@/api/http'
 import CanvasBoard from '@/components/chat/CanvasBoard.vue'
+import { uuid } from '@/utils/uuid'
 
 const { t } = useI18n()
 const text = ref('')
@@ -76,7 +77,7 @@ function readFile(file: File) {
   reader.onload = () => {
     const dataUrl = reader.result as string
     const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
-    images.value.push({ id: crypto.randomUUID(), fileName: file.name, mimeType: file.type, dataUrl, base64 })
+    images.value.push({ id: uuid(), fileName: file.name, mimeType: file.type, dataUrl, base64 })
   }
   reader.readAsDataURL(file)
 }
@@ -108,7 +109,7 @@ const boardVisible = ref(false)
 
 function onBoardConfirm(dataUrl: string) {
   const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
-  images.value.push({ id: crypto.randomUUID(), fileName: 'board.png', mimeType: 'image/png', dataUrl, base64 })
+  images.value.push({ id: uuid(), fileName: 'board.png', mimeType: 'image/png', dataUrl, base64 })
 }
 
 async function send() {

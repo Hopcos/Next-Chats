@@ -5,6 +5,7 @@ import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
 import { kernel } from '@/kernel'
+import { copyText as copyTextUtil } from '@/utils/clipboard'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -60,10 +61,9 @@ function openView(f: FavoriteItem) {
 
 async function copyText(text?: string | null, label = '') {
   const value = text ?? ''
-  try {
-    await navigator.clipboard.writeText(value)
+  if (await copyTextUtil(value)) {
     kernel.notify.success(label ? `${label} ${t('chat.copied')}` : t('chat.copied'))
-  } catch {
+  } else {
     kernel.notify.warning(t('chat.copyFailed'))
   }
 }

@@ -6,6 +6,7 @@ import mermaid from 'mermaid'
 import type { UiMessage } from '@/kernel/plugins'
 import ToolCard from '@/components/chat/ToolCard.vue'
 import { kernel } from '@/kernel'
+import { copyText } from '@/utils/clipboard'
 
 const props = defineProps<{ message: UiMessage }>()
 
@@ -32,10 +33,9 @@ const actionReady = computed(() => props.message.status !== 'sending')
 
 async function copyContent() {
   const text = props.message.content || ''
-  try {
-    await navigator.clipboard.writeText(text)
+  if (await copyText(text)) {
     kernel.notify.success(t('chat.copied'))
-  } catch {
+  } else {
     kernel.notify.warning(t('chat.copyFailed'))
   }
 }
