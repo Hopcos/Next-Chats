@@ -79,7 +79,11 @@ public sealed class SecurityOptions
 
     public string JwtAudience { get; set; } = "next-chats-web";
 
-    public int JwtExpireMinutes { get; set; } = 720;
+    /// <summary>access token 有效期（分钟）。方案 B 双令牌：短时 access，到期由 refresh token 静默续期</summary>
+    public int JwtExpireMinutes { get; set; } = 30;
+
+    /// <summary>refresh token 有效期（天）；每次使用轮换（旧令牌撤销），空闲超过该时长需重新登录</summary>
+    public int JwtRefreshExpireDays { get; set; } = 7;
 
     /// <summary>注入检测告警后是否仍放行（False = 拦截并提示，True = 放行但审计标记）</summary>
     public bool ProceedOnInjection { get; set; } = true;

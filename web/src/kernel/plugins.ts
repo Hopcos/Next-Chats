@@ -9,6 +9,7 @@ import type {
   ChatMessageDto,
   ChatSessionDto,
   ChatSettings,
+  LoginResponse,
   UserProfile,
 } from '@/api/types'
 
@@ -230,12 +231,13 @@ export class AuthService extends Service {
   }
 
   async login(username: string, password: string, authType?: string) {
-    const res = await http.post<{ token: string; user: UserProfile }>('/api/auth/login', {
+    const res = await http.post<LoginResponse>('/api/auth/login', {
       username,
       password,
       authType: authType || 'default',
     })
     tokenStore.set(res.token)
+    tokenStore.setRefresh(res.refreshToken)
     this.state.user = res.user
     this.state.ready = true
     this.ctx.emit('auth:changed', res.user)
@@ -246,15 +248,24 @@ export class AuthService extends Service {
     return http.get<AuthProviderDto[]>('/api/auth/providers')
   }
 
-  /** 登录失效（401）时清空会话状态：避免守卫误判“已登录”导致跳转死锁 */
+  /** 登录失效（401 且刷新失败）时清空会话状态：避免守卫误判“已登录”导致跳转死锁 */
   invalidate() {
-    tokenStore.clear()
+    tokenStore.clearAll()
     this.state.user = null
     this.state.ready = true
   }
 
   async logout() {
-    tokenStore.clear()
+    // 通知服务端撤销本会话刷新令牌（尽力而为：access 已过期时 401 也不阻塞本地登出）
+    const rt = tokenStore.getRefresh()
+    if (rt) {
+      try {
+        await http.post('/api/auth/logout', { refreshToken: rt })
+      } catch {
+        /* 忽略：本地登出照常进行 */
+      }
+    }
+    tokenStore.clearAll()
     this.state.user = null
     this.state.ready = true
     this.ctx.emit('auth:changed', null)

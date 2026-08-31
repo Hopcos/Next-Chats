@@ -61,6 +61,11 @@ public sealed class AdminUserController(IAdminStore store, ISecurityService secu
         if (!string.IsNullOrWhiteSpace(input.Status)) user.Status = Enum.Parse<UserStatus>(input.Status, true);
         await store.UpdateUserAsync(user);
         if (input.RoleIds is not null) await store.SetUserRolesAsync(id, input.RoleIds);
+        // 禁用（非 Active）→ 立即撤销该用户全部刷新令牌：其已签发的 access 到期后无法再续期
+        if (user.Status != UserStatus.Active)
+        {
+            await store.RevokeRefreshTokensForUserAsync(id);
+        }
         await audit.RecordAsync(AuditCategory.Admin, "USER.UPDATE", $"trc_{Guid.NewGuid():N}"[..24], UserId, user.Username);
         return NoContent();
     }

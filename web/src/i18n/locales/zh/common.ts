@@ -37,6 +37,10 @@ export default {
   err: {
     AUTH_INVALID_CREDENTIALS: '用户名或密码错误',
     AUTH_EXPIRED: '登录已过期，请重新登录',
+    REFRESH_TOKEN_INVALID: '登录凭证已失效，请重新登录',
+    REFRESH_TOKEN_EXPIRED: '登录已过期（长时间未活动），请重新登录',
+    REFRESH_TOKEN_REVOKED: '登录凭证已被注销（可能已在其他设备重新登录），请重新登录',
+    AUTH_USER_DISABLED: '账号已被禁用，请联系管理员',
     AUTH_USER_NOT_FOUND: '用户不存在',
     SESSION_NOT_FOUND: '会话不存在或已被删除',
     INPUT_FLAGGED: '检测到疑似注入内容，已拦截。请规范输入后重试。',

@@ -17,6 +17,10 @@ export interface AuthProviderDto {
 
 export interface LoginResponse {
   token: string
+  /** 刷新令牌：access 过期后用它静默续期（每次使用轮换） */
+  refreshToken: string
+  /** access token 有效期（秒） */
+  expiresIn: number
   user: UserProfile
 }
 

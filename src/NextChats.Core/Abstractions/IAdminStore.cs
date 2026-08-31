@@ -109,6 +109,19 @@ public interface IAdminStore
 
     Task DeleteInternalAuthProviderAsync(Guid id, CancellationToken ct = default);
 
+    // ---------- 刷新令牌（refresh token：存哈希 / 轮换 / 禁用撤销） ----------
+    /// <summary>登记新刷新令牌（创建前顺手清理该用户已过期的令牌）</summary>
+    Task CreateRefreshTokenAsync(Guid userId, string tokenHash, DateTimeOffset expiresAt, CancellationToken ct = default);
+
+    /// <summary>按 SHA-256 哈希取刷新令牌（含用户与其当前角色，供重签 access）</summary>
+    Task<UserRefreshToken?> GetRefreshTokenAsync(string tokenHash, CancellationToken ct = default);
+
+    /// <summary>撤销某刷新令牌（轮换时调用；replacedByTokenHash=替换它的新令牌哈希）</summary>
+    Task RevokeRefreshTokenAsync(string tokenHash, string? replacedByTokenHash, CancellationToken ct = default);
+
+    /// <summary>撤销某用户的全部未撤销刷新令牌（用户被禁用时调用）</summary>
+    Task<int> RevokeRefreshTokensForUserAsync(Guid userId, CancellationToken ct = default);
+
     // ---------- 审计 ----------
     Task<IReadOnlyList<AuditLog>> QueryAuditLogsAsync(Guid? userId, DateTimeOffset from, DateTimeOffset to, int take, CancellationToken ct = default);
 }

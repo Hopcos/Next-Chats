@@ -156,6 +156,21 @@ public static class InfrastructureExtensions
                 );
                 CREATE INDEX "IX_InternalAuthProviderRoleBindings_RoleId" ON "InternalAuthProviderRoleBindings" ("RoleId");
                 """);
+            // ---------- 刷新令牌（refresh token：存哈希、轮换、随用户删除级联） ----------
+            await AddTableIfMissingAsync(conn, "UserRefreshTokens", """
+                CREATE TABLE "UserRefreshTokens" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_UserRefreshTokens" PRIMARY KEY,
+                    "UserId" TEXT NOT NULL,
+                    "TokenHash" TEXT NOT NULL,
+                    "ExpiresAt" TEXT NOT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    "RevokedAt" TEXT,
+                    "ReplacedByTokenHash" TEXT,
+                    CONSTRAINT "FK_UserRefreshTokens_Users_UserId" FOREIGN KEY ("UserId") REFERENCES "Users" ("Id") ON DELETE CASCADE
+                );
+                CREATE UNIQUE INDEX "IX_UserRefreshTokens_TokenHash" ON "UserRefreshTokens" ("TokenHash");
+                CREATE INDEX "IX_UserRefreshTokens_UserId_ExpiresAt" ON "UserRefreshTokens" ("UserId", "ExpiresAt");
+                """);
         }
         finally
         {

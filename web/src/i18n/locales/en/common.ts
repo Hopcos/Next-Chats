@@ -37,6 +37,10 @@ export default {
   err: {
     AUTH_INVALID_CREDENTIALS: 'Invalid username or password',
     AUTH_EXPIRED: 'Session expired, please sign in again',
+    REFRESH_TOKEN_INVALID: 'Invalid or unknown refresh token, please sign in again',
+    REFRESH_TOKEN_EXPIRED: 'Your session has expired (inactive over 7 days), please sign in again',
+    REFRESH_TOKEN_REVOKED: 'This session has been signed out elsewhere, please sign in again',
+    AUTH_USER_DISABLED: 'This account has been disabled, please contact the administrator',
     AUTH_USER_NOT_FOUND: 'User not found',
     SESSION_NOT_FOUND: 'Session not found or deleted',
     INPUT_FLAGGED: 'Suspected prompt injection detected and blocked. Please rephrase your input.',

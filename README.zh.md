@@ -322,7 +322,7 @@ sequenceDiagram
 | 后端 | .NET 10 · ASP.NET Core · EF Core（现 SQLite → 可切 MySQL 8）|
 | MCP | **ModelContextProtocol SDK 2.2.0**（最新稳定版）· Streamable HTTP 传输 · STDIO 可扩展 |
 | 前端 | Vue 3 · TypeScript · Vite · Element Plus · Three.js · **Cordis ^3.18.1**（插件内核）|
-| 安全 | JWT · PBKDF2-SHA256(210k) 密码 · AES-256-GCM 密钥加密 · 审计日志脱敏 |
+| 安全 | JWT 双令牌（30 分钟 access + 轮换式 refresh，禁用/登出即撤销）· PBKDF2-SHA256(210k) 密码 · AES-256-GCM 密钥加密 · 审计日志脱敏 |
 | 国际化 | vue-i18n 10（中英双语，默认英文）· 后端错误经 `X-Lang` 请求头本地化 |
 
 ## 目录结构
@@ -362,6 +362,7 @@ cd web && npm install && npm run dev
 - 登录页出现登录方式单选（`default` + 已启用的鉴权方式，来源 `GET /api/auth/providers`）；选择内部鉴权后，后端按配置调用鉴权中心验证账号密码。
 - 鉴权通过后**自动建号或直接取号**：内部用户唯一性 = `(AuthType, Username)`（default 与 acs 账号可同名）；已存在则直接读取其角色权限，不存在则自动创建（无密码、用户名=显示名、状态正常、绑定鉴权配置的默认角色）。
 - 内部鉴权用户与默认用户共用**同一套 JWT** 机制，后续聊天 / 目录 / 权限全部一致（角色 → 模型/MCP/Prompt/Skill 绑定决定可见范围）。
+- **双令牌会话（JWT + Refresh Token）**：登录签发短时 access token（**30 分钟**）与持久化 refresh token（**7 天**，仅存 SHA-256 哈希）。access 过期时前端用 refresh 静默续期（`POST /api/auth/refresh`）并自动重放原请求——活跃用户不会中途被踢，空闲 7 天以上才需重新登录。每次续期都**轮换**（旧令牌撤销并记录替换者，重放即拒）。重新登录、登出、**用户被禁用**都会立即撤销该用户全部 refresh token（被禁账号无法再续期，其 access 最多残留 30 分钟）。
 
 ```mermaid
 sequenceDiagram

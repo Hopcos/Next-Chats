@@ -322,7 +322,7 @@ sequenceDiagram
 | Backend | .NET 10 · ASP.NET Core · EF Core (SQLite now → MySQL 8 ready) |
 | MCP | **ModelContextProtocol SDK 2.2.0** (latest stable) · Streamable HTTP transport · STDIO extensible |
 | Frontend | Vue 3 · TypeScript · Vite · Element Plus · Three.js · **Cordis ^3.18.1** (plugin kernel) |
-| Security | JWT · PBKDF2-SHA256(210k) password hashing · AES-256-GCM secret encryption · sanitized audit logs |
+| Security | JWT dual-token (30-min access + rotating refresh, revoked on disable/logout) · PBKDF2-SHA256(210k) password hashing · AES-256-GCM secret encryption · sanitized audit logs |
 | i18n | vue-i18n 10 (en / zh-CN, English default) · `X-Lang` error localization on the API |
 
 ## Repository Layout
@@ -362,6 +362,7 @@ cd web && npm install && npm run dev
 - The login page shows a sign-in-method radio group (`default` + enabled auth centers, from `GET /api/auth/providers`); choosing an internal method makes the backend validate the credentials against the configured auth center.
 - After a successful validation the user is **auto-provisioned or reused**: internal users are unique by `(AuthType, Username)` (a `default` and an `acs` account may share a username); when the user already exists their roles are read directly, otherwise a user is created (no password, displayName = username, status Active, bound to the provider's default roles).
 - Internal-auth users share the **same JWT mechanism** as default accounts: chat / catalog / permissions behave identically afterwards (role → model/MCP/Prompt/Skill bindings decide the visible scope).
+- **Dual-token session (double-token)**: login issues a short-lived access token (**30 min**) plus a persisted refresh token (**7 days**, stored as SHA-256 hash). When the access token expires, the frontend silently exchanges the refresh token (`POST /api/auth/refresh`) and replays the request — active users are never logged out mid-work, idle sessions expire after 7 days. Every refresh **rotates** the token (the old one is revoked and recorded as replaced, so replays are rejected). Re-login, logout, and **user disable** revoke that user's refresh tokens immediately (a disabled account can no longer renew, and its access token dies within 30 min).
 
 ```mermaid
 sequenceDiagram

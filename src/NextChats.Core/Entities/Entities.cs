@@ -34,6 +34,33 @@ public class AppUser
     public List<AppRole> Roles { get; set; } = [];
 }
 
+/// <summary>
+/// 刷新令牌（Refresh Token）：access token 过期后用于静默续期。
+/// 每次使用即轮换（旧令牌撤销、记录替换者）；用户被禁用时该用户全部刷新令牌一并撤销。
+/// 仅存 SHA-256 哈希（TokenHash），明文不落库。
+/// </summary>
+public class UserRefreshToken
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    public Guid UserId { get; set; }
+
+    public AppUser? User { get; set; }
+
+    /// <summary>刷新令牌明文的 SHA-256 十六进制哈希（不存明文）</summary>
+    [Required, MaxLength(64)] public string TokenHash { get; set; } = null!;
+
+    public DateTimeOffset ExpiresAt { get; set; }
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>撤销时间（null = 有效）；轮换时旧令牌被撤销</summary>
+    public DateTimeOffset? RevokedAt { get; set; }
+
+    /// <summary>轮换后替换它的新令牌哈希（用于重放审计）</summary>
+    [MaxLength(64)] public string? ReplacedByTokenHash { get; set; }
+}
+
 /// <summary>角色（RBAC）</summary>
 public class AppRole
 {

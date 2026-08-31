@@ -32,6 +32,12 @@ public sealed class AuthController(
         [property: JsonPropertyName("password")] string Password,
         [property: JsonPropertyName("authType")] string? AuthType = null);
 
+    public sealed record RefreshRequest(
+        [property: JsonPropertyName("refreshToken")] string RefreshToken);
+
+    public sealed record LogoutRequest(
+        [property: JsonPropertyName("refreshToken")] string? RefreshToken = null);
+
     [AllowAnonymous]
     [HttpPost("login")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
@@ -71,6 +77,14 @@ public sealed class AuthController(
         user.LastLoginAt = DateTimeOffset.UtcNow;
         await admin.UpdateUserAsync(user);
 
+        // 双 token：登录即撤销该用户旧的刷新令牌（旧会话无法再续期），随后签发新 refresh
+        await admin.RevokeRefreshTokensForUserAsync(user.Id);
+        var refreshToken = GenerateRefreshToken();
+        await admin.CreateRefreshTokenAsync(
+            user.Id,
+            Sha256Hex(refreshToken),
+            DateTimeOffset.UtcNow.AddDays(Math.Clamp(securityOptions.Value.JwtRefreshExpireDays, 1, 90)));
+
         await audit.RecordAsync(AuditCategory.Auth, "LOGIN.SUCCESS", $"trc_{Guid.NewGuid():N}"[..24],
             user.Id, ip: HttpContext.Connection.RemoteIpAddress?.ToString(),
             detail: new { username = user.Username, authType = user.AuthType });
@@ -79,6 +93,8 @@ public sealed class AuthController(
         return Ok(new
         {
             token,
+            refreshToken,
+            expiresIn = securityOptions.Value.JwtExpireMinutes * 60,
             user = new
             {
                 id = user.Id,
@@ -90,6 +106,96 @@ public sealed class AuthController(
                 isAdmin = roles.Contains("admin"),
             },
         });
+    }
+
+    /// <summary>
+    /// 刷新令牌续期（方案 B）：access 过期后借此静默换新，旧 refresh 轮换撤销、记录替换者。
+    /// 校验链：令牌存在 → 未过期 → 未撤销 → 用户仍为 Active（用户被禁用时此处拒绝，令其立即掉线）。
+    /// </summary>
+    [AllowAnonymous]
+    [HttpPost("refresh")]
+    public async Task<IActionResult> Refresh([FromBody] RefreshRequest request)
+    {
+        var trace = $"trc_{Guid.NewGuid():N}"[..24];
+        string reason;
+        if (string.IsNullOrWhiteSpace(request.RefreshToken))
+        {
+            reason = "REFRESH_TOKEN_INVALID";
+            await audit.RecordAsync(AuditCategory.Auth, "REFRESH.FAILED", trace,
+                ip: HttpContext.Connection.RemoteIpAddress?.ToString(), detail: new { reason });
+            return Unauthorized(Err(reason));
+        }
+
+        var entity = await admin.GetRefreshTokenAsync(Sha256Hex(request.RefreshToken));
+        if (entity is null || entity.User is null)
+        {
+            reason = "REFRESH_TOKEN_INVALID";
+            await audit.RecordAsync(AuditCategory.Auth, "REFRESH.FAILED", trace,
+                ip: HttpContext.Connection.RemoteIpAddress?.ToString(), detail: new { reason });
+            return Unauthorized(Err(reason));
+        }
+
+        if (entity.ExpiresAt <= DateTimeOffset.UtcNow)
+        {
+            reason = "REFRESH_TOKEN_EXPIRED";
+        }
+        else if (entity.RevokedAt is not null)
+        {
+            // 已轮换/已撤销：旧令牌重放 → 登录态全部作废，防令牌泄露持续利用
+            reason = "REFRESH_TOKEN_REVOKED";
+        }
+        else if (entity.User.Status != UserStatus.Active)
+        {
+            reason = "AUTH_USER_DISABLED";
+        }
+        else
+        {
+            reason = string.Empty;
+        }
+
+        if (reason.Length > 0)
+        {
+            await audit.RecordAsync(AuditCategory.Auth, "REFRESH.FAILED", trace,
+                entity.UserId, ip: HttpContext.Connection.RemoteIpAddress?.ToString(),
+                detail: new { username = entity.User.Username, reason });
+            return Unauthorized(Err(reason));
+        }
+
+        // 轮换：旧令牌撤销并记录替换者 → 签发新 access + 新 refresh
+        var newRefresh = GenerateRefreshToken();
+        await admin.RevokeRefreshTokenAsync(Sha256Hex(request.RefreshToken), Sha256Hex(newRefresh));
+        await admin.CreateRefreshTokenAsync(
+            entity.UserId,
+            Sha256Hex(newRefresh),
+            DateTimeOffset.UtcNow.AddDays(Math.Clamp(securityOptions.Value.JwtRefreshExpireDays, 1, 90)));
+
+        var roles = entity.User.Roles.Select(r => r.Code).ToArray();
+        var token = JwtTokenFactory.Issue(securityOptions.Value, entity.User.Id, entity.User.Username,
+            entity.User.DisplayName ?? entity.User.Username, roles);
+
+        await audit.RecordAsync(AuditCategory.Auth, "REFRESH.SUCCESS", trace,
+            entity.UserId, ip: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            detail: new { username = entity.User.Username });
+
+        logger.LogInformation("刷新令牌续期 {Username} uid={Uid}", entity.User.Username, entity.User.Id);
+        return Ok(new
+        {
+            token,
+            refreshToken = newRefresh,
+            expiresIn = securityOptions.Value.JwtExpireMinutes * 60,
+        });
+    }
+
+    /// <summary>登出：撤销该用户全部有效刷新令牌（access 到期即彻底失效）</summary>
+    [Authorize]
+    [HttpPost("logout")]
+    public async Task<IActionResult> Logout([FromBody] LogoutRequest request)
+    {
+        var revoked = await admin.RevokeRefreshTokensForUserAsync(UserId);
+        await audit.RecordAsync(AuditCategory.Auth, "LOGOUT", $"trc_{Guid.NewGuid():N}"[..24],
+            UserId, ip: HttpContext.Connection.RemoteIpAddress?.ToString(),
+            detail: new { revoked });
+        return NoContent();
     }
 
     /// <summary>登录页可选的鉴权方式（default + 已启用的内部鉴权）</summary>
@@ -286,5 +392,22 @@ public sealed class AuthController(
             JsonValueKind.Object => value.EnumerateObject().Any(),
             _ => true, // 数字 / 布尔视为非空
         };
+    }
+
+    // ---------------- 刷新令牌辅助 ----------------
+
+    /// <summary>生成 48 字节随机刷新令牌（Base64Url，仅哈希落库）</summary>
+    private static string GenerateRefreshToken()
+    {
+        var buffer = new byte[48];
+        System.Security.Cryptography.RandomNumberGenerator.Fill(buffer);
+        return Convert.ToBase64String(buffer).TrimEnd('=').Replace('+', '-').Replace('/', '_');
+    }
+
+    /// <summary>刷新令牌明文 → SHA-256 十六进制（存储与查询都用哈希）</summary>
+    private static string Sha256Hex(string input)
+    {
+        var bytes = System.Security.Cryptography.SHA256.HashData(Encoding.UTF8.GetBytes(input));
+        return Convert.ToHexString(bytes).ToLowerInvariant();
     }
 }
