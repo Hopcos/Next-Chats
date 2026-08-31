@@ -109,12 +109,17 @@ app.UseSerilogRequestLogging(o =>
         diag.Set("TraceId", http.TraceIdentifier);
     };
 });
+// 前端静态资源（wwwroot 下的 dist 产物）：默认文档 index.html + 静态文件，需在认证之前
+app.UseDefaultFiles();
+app.UseStaticFiles();
 app.UseCors("web");
 app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();
 app.MapGet("/health", () => Results.Json(new { status = "ok", time = DateTimeOffset.UtcNow }));
+// SPA 回退：非 /api 的未知路径一律返回 index.html（前端路由由 Vue Router 接管）
+app.MapFallbackToFile("index.html");
 
 app.Run();
 

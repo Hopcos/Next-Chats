@@ -2,6 +2,7 @@
 bin/
 obj/
 artifacts/
+publish/
 *.user
 *.suo
 *.userprefs
