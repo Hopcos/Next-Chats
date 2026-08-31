@@ -4,7 +4,7 @@
  * - 支持画笔大小 / 颜色 / 撤销 / 擦除 / 清屏；可展开放大与折叠缩小
  * - 每次落笔后自动快照到 localStorage，重新打开恢复上次画的内容
  */
-import { ref, watch } from 'vue'
+import { computed, ref, shallowRef } from 'vue'
 import { useI18n } from 'vue-i18n'
 
 const props = defineProps<{ visible: boolean }>()
@@ -27,10 +27,35 @@ const color = ref('#111827')
 const size = ref(4)
 const eraser = ref(false)
 const sizeLarge = ref(false)
-const undoStack: ImageData[] = []
+// 响应式撤销栈：重赋值触发视图更新（撤销按钮 disabled 依赖它）
+const undoStack = shallowRef<ImageData[]>([])
 const MAX_UNDO = 40
 
 const SWATCHES = ['#111827', '#e11d48', '#f97316', '#facc15', '#22c55e', '#0ea5e9', '#2563eb', '#8b5cf6', '#ec4899', '#ffffff']
+
+// ---- 工具光标：形状跟随当前工具（画笔/橡皮），整体大小随笔刷粗细缩放；
+//      笔尖处叠加一个与实际落笔等径的圆点作“笔宽预览”，hotspot 对准笔尖保证落点精确 ----
+const cursorStyle = computed(() => {
+  const s = Math.min(size.value + 10, 32) // 光标图像边长（px）；浏览器对 cursor 尺寸有上限
+  const dot = ((size.value / 2) * 24) / s // 把笔刷半径换算进 viewBox(0 0 24 24) 单位
+  if (eraser.value) {
+    const svg =
+      '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24">' +
+      '<path d="M7.5 18.5 3.6 14.6a1.9 1.9 0 0 1 0-2.7l7-7a1.9 1.9 0 0 1 2.7 0l5 5a1.9 1.9 0 0 1 0 2.7l-5.8 5.9Z" fill="#ffffff" stroke="#111827" stroke-width="1.4" stroke-linejoin="round"/>' +
+      '<path d="m9.7 4.3 8.4 8.4" stroke="#111827" stroke-width="1.2"/>' +
+      '<path d="M11 21.5h10" stroke="#111827" stroke-width="1.2" stroke-linecap="round"/>' +
+      '<circle cx="5.5" cy="19.5" r="' + dot.toFixed(2) + '" fill="#d1d5db" fill-opacity="0.7" stroke="#111827" stroke-width="0.8"/>' +
+      '</svg>'
+    return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${Math.round((5.5 / 24) * s)} ${Math.round((19.5 / 24) * s)}, crosshair`
+  }
+  const svg =
+    '<svg xmlns="http://www.w3.org/2000/svg" width="' + s + '" height="' + s + '" viewBox="0 0 24 24">' +
+    '<path d="M3 21l1.6-4.2L16.4 5l2.6 2.6L7.2 19.4 3 21Z" fill="#ffffff" stroke="#111827" stroke-width="1.4" stroke-linejoin="round"/>' +
+    '<path d="m14.6 6.8 2.6 2.6" stroke="#111827" stroke-width="1.3"/>' +
+    '<circle cx="4" cy="20" r="' + dot.toFixed(2) + '" fill="' + color.value + '" stroke="#111827" stroke-width="0.7"/>' +
+    '</svg>'
+  return `url("data:image/svg+xml,${encodeURIComponent(svg)}") ${Math.round((4 / 24) * s)} ${Math.round((20 / 24) * s)}, crosshair`
+})
 
 // ---- 绘制状态 ----
 let drawing = false
@@ -43,6 +68,10 @@ function setupCanvas() {
   if (!ctx) return
   ctx.lineCap = 'round'
   ctx.lineJoin = 'round'
+  ctx.globalCompositeOperation = 'source-over'
+  // 打开画板：默认选中画笔、立即可画；撤销历史清零（恢复的快照没有"上一笔"）
+  eraser.value = false
+  undoStack.value = []
   resetToWhite()
   loadSnapshot()
 }
@@ -56,16 +85,17 @@ function resetToWhite() {
   ctx.restore()
 }
 
-/** 撤销栈：每笔开始前记录当前画像；undo 弹出恢复 */
+/** 撤销栈：每笔（画笔/橡皮/清屏）开始前记录当前画像；undo 弹出恰好一步 */
 function pushUndo() {
   if (!ctx) return
-  undoStack.push(ctx.getImageData(0, 0, W, H))
-  if (undoStack.length > MAX_UNDO) undoStack.shift()
+  undoStack.value = [...undoStack.value, ctx.getImageData(0, 0, W, H)].slice(-MAX_UNDO)
 }
 
 function undo() {
-  if (!ctx || undoStack.length === 0) return
-  ctx.putImageData(undoStack.pop()!, 0, 0)
+  const stack = undoStack.value
+  if (!ctx || stack.length === 0) return
+  ctx.putImageData(stack[stack.length - 1], 0, 0)
+  undoStack.value = stack.slice(0, -1)
   saveSnapshot()
 }
 
@@ -74,10 +104,6 @@ function clearAll() {
   pushUndo()
   resetToWhite()
   saveSnapshot()
-}
-
-function toggleEraser() {
-  setEraser(!eraser.value)
 }
 
 function setEraser(on: boolean) {
@@ -95,6 +121,8 @@ function toPos(e: PointerEvent) {
 }
 
 function strokeStart(e: PointerEvent) {
+  // 惰性自愈：极端情况下（opened 尚未触发）首次落笔时补取 2D 上下文
+  if (!ctx && canvasEl.value) ctx = canvasEl.value.getContext('2d')
   if (!ctx) return
   pushUndo()
   drawing = true
@@ -175,13 +203,6 @@ function confirm() {
 function close() {
   emit('update:visible', false)
 }
-
-watch(
-  () => props.visible,
-  (v) => {
-    if (v) setupCanvas()
-  },
-)
 </script>
 
 <template>
@@ -192,6 +213,7 @@ watch(
     :show-close="false"
     append-to-body
     class="board-dialog"
+    @opened="setupCanvas"
     @update:model-value="(v: boolean) => emit('update:visible', v)"
   >
     <template #header>
@@ -215,16 +237,29 @@ watch(
             <el-button
               size="small"
               :type="!eraser ? 'primary' : 'default'"
+              :title="t('chat.boardBrush')"
+              :aria-label="t('chat.boardBrush')"
               @click="setEraser(false)"
             >
-              {{ t('chat.boardBrush') }}
+              <!-- 画笔 ICON：斜杆笔杆 + 实心笔尖 -->
+              <svg class="tool-ico" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M14.6 1.4a1.8 1.8 0 0 1 0 2.5L8.6 10 6 7.4 12.1 1.4a1.8 1.8 0 0 1 2.5 0Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+                <path d="M6 7.4 8.6 10l-1.9 1.9c-.8.8-2.2 1-3.9.8.2-1.7.7-2.9 1.5-3.7Z" fill="currentColor" />
+              </svg>
             </el-button>
             <el-button
               size="small"
               :type="eraser ? 'primary' : 'default'"
+              :title="t('chat.boardEraser')"
+              :aria-label="t('chat.boardEraser')"
               @click="setEraser(true)"
             >
-              {{ t('chat.boardEraser') }}
+              <!-- 橡皮 ICON：斜置橡皮体 + 底面线 -->
+              <svg class="tool-ico" viewBox="0 0 16 16" aria-hidden="true">
+                <path d="M8.3 2.3l5.4 5.4a1.3 1.3 0 0 1 0 1.8l-3.2 3.2H5.6L2.3 8.7a1.3 1.3 0 0 1 0-1.8l4.2-4.6a1.3 1.3 0 0 1 1.8 0Z" fill="none" stroke="currentColor" stroke-width="1.2" stroke-linejoin="round" />
+                <path d="M6.3 5.3l4.4 4.4" fill="none" stroke="currentColor" stroke-width="1.1" />
+                <path d="M4.6 13.7h9.1" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
+              </svg>
             </el-button>
           </el-button-group>
         </span>
@@ -260,6 +295,7 @@ watch(
           :width="W"
           :height="H"
           class="board-canvas"
+          :style="{ cursor: cursorStyle }"
           @pointerdown="strokeStart"
           @pointermove="strokeMove"
           @pointerup="strokeEnd"
@@ -307,6 +343,12 @@ watch(
   display: flex;
   align-items: center;
   gap: 6px;
+}
+
+.tool-ico {
+  width: 15px;
+  height: 15px;
+  display: block;
 }
 
 .tool-label {
