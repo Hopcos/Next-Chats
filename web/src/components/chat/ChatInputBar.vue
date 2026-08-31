@@ -3,6 +3,7 @@ import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { kernel } from '@/kernel'
 import { http } from '@/api/http'
+import CanvasBoard from '@/components/chat/CanvasBoard.vue'
 
 const { t } = useI18n()
 const text = ref('')
@@ -102,6 +103,14 @@ function removeImage(id: string) {
   images.value = images.value.filter((i) => i.id !== id)
 }
 
+// ---- 聊天画板：确认后把画布 PNG 作为图片附件加入消息 ----
+const boardVisible = ref(false)
+
+function onBoardConfirm(dataUrl: string) {
+  const base64 = dataUrl.slice(dataUrl.indexOf(',') + 1)
+  images.value.push({ id: crypto.randomUUID(), fileName: 'board.png', mimeType: 'image/png', dataUrl, base64 })
+}
+
 async function send() {
   const content = text.value.trim()
   if ((!content && images.value.length === 0) || streaming.value) return
@@ -166,6 +175,9 @@ function interrupt() {
             <el-tooltip :content="t('chat.imagePasteHint')" placement="top">
               <el-button text size="small" type="primary" @click="fileInput?.click()">🖼 {{ t('chat.uploadImage') }}</el-button>
             </el-tooltip>
+            <el-tooltip :content="t('chat.boardHint')" placement="top">
+              <el-button text size="small" type="primary" @click="boardVisible = true">🎨 {{ t('chat.board') }}</el-button>
+            </el-tooltip>
             <input ref="fileInput" type="file" accept="image/png,image/jpeg,image/gif,image/webp" multiple class="hidden-file" @change="onPickChange" />
           </template>
           <span class="thinking-row">
@@ -187,6 +199,7 @@ function interrupt() {
       </div>
     </div>
   </div>
+  <CanvasBoard v-model:visible="boardVisible" @confirm="onBoardConfirm" />
 </template>
 
 <style scoped>
