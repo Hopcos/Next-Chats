@@ -7,6 +7,7 @@ import type { UiMessage } from '@/kernel/plugins'
 import ToolCard from '@/components/chat/ToolCard.vue'
 import { kernel } from '@/kernel'
 import { copyText } from '@/utils/clipboard'
+import { captureElementToPng, downloadBlob, stamp } from '@/utils/capture'
 
 const props = defineProps<{ message: UiMessage }>()
 
@@ -37,6 +38,27 @@ async function copyContent() {
     kernel.notify.success(t('chat.copied'))
   } else {
     kernel.notify.warning(t('chat.copyFailed'))
+  }
+}
+
+// ---- 回答生成图片下载 ----
+const bubbleRef = ref<HTMLElement | null>(null)
+const downloading = ref(false)
+
+async function downloadImage() {
+  const el = bubbleRef.value
+  if (!el || downloading.value) return
+  downloading.value = true
+  try {
+    const blob = await captureElementToPng(el)
+    if (!blob) {
+      kernel.notify.warning(t('chat.downloadFailed'))
+      return
+    }
+    downloadBlob(blob, `answer-${stamp()}.png`)
+    kernel.notify.success(t('chat.downloadOk'))
+  } finally {
+    downloading.value = false
   }
 }
 
@@ -387,7 +409,7 @@ function prettyArgs(raw?: string): string {
       </div>
 
       <!-- 正文（打字机揭示 → Markdown + Mermaid） -->
-      <div v-if="message.content || message.status !== 'sending'" class="bubble" :class="{ streaming: streamingNow }">
+      <div v-if="message.content || message.status !== 'sending'" ref="bubbleRef" class="bubble" :class="{ streaming: streamingNow }">
         <template v-if="message.content && !mdReady"><div class="plain-text">{{ shownContent }}</div></template>
         <div v-else-if="mdReady" ref="contentRef" class="md" v-html="mdHtml" @click="onMermaidToolsClick" @mousedown="onMermaidPanStart" @wheel="onMermaidWheel"></div>
         <span v-else-if="streamingNow" class="skeleton">▍</span>
@@ -406,6 +428,7 @@ function prettyArgs(raw?: string): string {
       <div v-if="actionReady" class="actions">
         <button class="act nc-dim" :title="t('chat.favorite')" @click="emit('favorite', message)">⭐ {{ t('chat.favorite') }}</button>
         <button class="act nc-dim" :title="t('chat.copy')" @click="copyContent">📋 {{ t('chat.copy') }}</button>
+        <button v-if="isAssistant" class="act nc-dim" :title="t('chat.download')" :disabled="downloading" @click="downloadImage">{{ downloading ? '⏳' : '⬇️' }} {{ t('chat.download') }}</button>
         <button v-if="isAssistant" class="act nc-dim" :title="t('chat.regenerate')" @click="emit('regenerate', message.id)">🔄 {{ t('chat.regenerate') }}</button>
         <button class="act nc-dim danger" :title="t('common.delete')" @click="emit('remove', message)">🗑 {{ t('common.delete') }}</button>
       </div>
