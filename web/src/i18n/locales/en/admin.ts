@@ -26,7 +26,7 @@ export default {
       colHealth: 'Health',
       thinkParam: 'Thinking Param Mode',
       thinkParamNone: 'None: use gateway default (recommended)',
-      thinkParamDeepSeek: 'DeepSeek: thinking{type:enabled}, effort top-level',
+      thinkParamDeepSeek: "DeepSeek: thinking{'{type:enabled}'}, effort top-level",
       thinkParamQwen: 'Qwen: enable_thinking',
       thinkParamOpenAi: 'OpenAI: reasoning_effort only',
       notConfigured: 'Not configured',

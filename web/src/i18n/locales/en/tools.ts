@@ -83,7 +83,7 @@ export default {
       numbers: 'Numbers 0-9',
       lowercase: 'Lowercase a-z',
       uppercase: 'Uppercase A-Z',
-      special: 'Special !@#$',
+      special: "Special !{'@'}#$",
       params: 'Parameters',
       minLen: 'Min Length',
       maxLen: 'Max Length',

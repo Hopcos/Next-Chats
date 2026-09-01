@@ -83,7 +83,7 @@ export default {
       numbers: '数字 0-9',
       lowercase: '小写 a-z',
       uppercase: '大写 A-Z',
-      special: '符号 !@#$',
+      special: "符号 !{'@'}#$",
       params: '参数',
       minLen: '最小长度',
       maxLen: '最大长度',

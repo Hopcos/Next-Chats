@@ -292,14 +292,17 @@ onBeforeUnmount(stopSpeak)
 .tr-page {
   height: 100%;
   overflow: auto;
-  padding: 26px 28px;
+  padding: 20px 24px;
   display: flex;
-  justify-content: center;
-  align-items: flex-start;
+  flex-direction: column;
+  align-items: center;
 }
 
 .tr-card {
-  width: min(1160px, 100%);
+  width: 90%;
+  max-width: none;
+  flex: 1;
+  min-height: 0;
   background: var(--nc-surface);
   border: 1px solid var(--nc-border);
   border-radius: 16px;
@@ -405,6 +408,8 @@ onBeforeUnmount(stopSpeak)
 }
 
 .tr-grid {
+  flex: 1;
+  min-height: 160px;
   display: grid;
   grid-template-columns: 1fr auto 1fr;
   gap: 14px;
@@ -414,11 +419,12 @@ onBeforeUnmount(stopSpeak)
 .tr-pane {
   display: flex;
   flex-direction: column;
-  border: 1px solid var(--nc-border);
+  border: 1px solid #e2e8f0;
   border-radius: 12px;
   overflow: hidden;
-  background: var(--nc-surface-2, rgba(128, 128, 128, 0.04));
+  background: #ffffff;
   min-width: 0;
+  min-height: 0;
 }
 
 .tr-pane-head {
@@ -426,13 +432,14 @@ onBeforeUnmount(stopSpeak)
   align-items: center;
   gap: 8px;
   padding: 8px 12px;
-  border-bottom: 1px solid var(--nc-border);
+  border-bottom: 1px solid #eef2f7;
+  background: #f8fafc;
 }
 
 .tr-pane-title {
   font-size: 13px;
   font-weight: 700;
-  color: var(--nc-text);
+  color: #1e293b;
 }
 
 .tr-pane-lang {
@@ -446,17 +453,17 @@ onBeforeUnmount(stopSpeak)
 .tr-pane-count {
   margin-left: auto;
   font-size: 11.5px;
-  color: var(--nc-text-dim, #8a94a6);
+  color: #94a3b8;
 }
 
 .tr-area {
   flex: 1;
-  min-height: 300px;
+  min-height: 0;
   border: 0;
   outline: none;
   resize: none;
-  background: transparent;
-  color: var(--nc-text);
+  background: #ffffff;
+  color: #1e293b;
   padding: 12px 14px;
   font-size: 14px;
   line-height: 1.7;
@@ -464,19 +471,20 @@ onBeforeUnmount(stopSpeak)
 }
 
 .tr-area.out {
-  background: color-mix(in srgb, var(--nc-primary) 4%, transparent);
+  background: #ffffff;
 }
 
 .tr-area::placeholder {
-  color: var(--nc-text-dim, #8a94a6);
-  opacity: 0.7;
+  color: #94a3b8;
+  opacity: 0.8;
 }
 
 .tr-pane-foot {
   display: flex;
   gap: 8px;
   padding: 7px 10px;
-  border-top: 1px solid var(--nc-border);
+  border-top: 1px solid #eef2f7;
+  background: #fafbfd;
 }
 
 .tr-icon-btn {
@@ -569,7 +577,7 @@ onBeforeUnmount(stopSpeak)
   }
 
   .tr-area {
-    min-height: 180px;
+    min-height: 220px;
   }
 }
 </style>

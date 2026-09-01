@@ -26,7 +26,7 @@ export default {
       colHealth: '健康',
       thinkParam: '思考参数模式',
       thinkParamNone: 'None：依赖网关默认（推荐）',
-      thinkParamDeepSeek: 'DeepSeek：thinking{type:enabled}，effort 独立顶层',
+      thinkParamDeepSeek: "DeepSeek：thinking{'{type:enabled}'}，effort 独立顶层",
       thinkParamQwen: 'Qwen：enable_thinking',
       thinkParamOpenAi: 'OpenAI：仅 reasoning_effort',
       notConfigured: '未配置',
