@@ -67,7 +67,8 @@ const component = computed(() => (def.value ? defineAsyncComponent(def.value.loa
 
 <style scoped>
 .tp {
-  min-height: 100vh;
+  height: 100vh;
+  overflow: hidden;
   display: flex;
   flex-direction: column;
   background:
