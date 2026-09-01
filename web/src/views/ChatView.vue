@@ -185,31 +185,45 @@ function openToolsHub() {
         </div>
 
         <div class="actions">
-          <el-tooltip :content="t('tools.hubTitle')" placement="bottom">
-            <button class="toolbar-entry" :aria-label="t('tools.hubTitle')" @click="openToolsHub">
-              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
-                <path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8Z" />
-                <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
-                <path d="M3 12h18" />
-                <path d="M12 13.4v2.2" />
-              </svg>
-            </button>
-          </el-tooltip>
+          <div class="icon-actions">
+            <el-tooltip :content="t('chat.newSession')" placement="bottom">
+              <button class="toolbar-entry" :aria-label="t('chat.newSession')" @click="onNewSession">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="2.5" y="5.5" width="19" height="13" rx="2" />
+                  <path d="M12 9v6" />
+                  <path d="M9 12h6" />
+                </svg>
+              </button>
+            </el-tooltip>
 
-          <el-button-group>
-            <el-button size="small" class="act-btn" @click="onNewSession">
-              <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
-              {{ t('chat.newSession') }}
-            </el-button>
-            <el-button size="small" class="act-btn" @click="router.push('/favorites')">
-              <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 1.8 9.9 5.8l4.4.6-3.2 3.1.8 4.4L8 11.9l-3.9 2 .8-4.4L1.7 6.4l4.4-.6L8 1.8Z" fill="none" stroke="currentColor" stroke-width="1.3" stroke-linejoin="round" /></svg>
-              {{ t('chat.favorites') }}
-            </el-button>
-            <el-button size="small" class="act-btn" @click="openSettings">
-              <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 5.2a2.8 2.8 0 1 0 0 5.6 2.8 2.8 0 0 0 0-5.6Z" fill="none" stroke="currentColor" stroke-width="1.4" /><path d="M8 1.5v2M8 12.5v2M2.1 4.2l1.7 1M12.2 10.8l1.7 1M1.5 8h2M12.5 8h2M2.1 11.8l1.7-1M12.2 5.2l1.7-1" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" /></svg>
-              {{ t('chat.settings') }}
-            </el-button>
-          </el-button-group>
+            <el-tooltip :content="t('chat.favorites')" placement="bottom">
+              <button class="toolbar-entry" :aria-label="t('chat.favorites')" @click="router.push('/favorites')">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="m12 3.5 2.6 5.3 5.9.85-4.25 4.15 1 5.85L12 16.85 6.75 19.6l1-5.85L3.5 9.65l5.9-.85L12 3.5Z" />
+                </svg>
+              </button>
+            </el-tooltip>
+
+            <el-tooltip :content="t('chat.settings')" placement="bottom">
+              <button class="toolbar-entry" :aria-label="t('chat.settings')" @click="openSettings">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <circle cx="12" cy="12" r="3" />
+                  <path d="M12 3.5v2.3M12 18.2v2.3M3.5 12h2.3M18.2 12h2.3M6 6l1.6 1.6M16.4 16.4 18 18M6 18l1.6-1.6M16.4 7.6 18 6" />
+                </svg>
+              </button>
+            </el-tooltip>
+
+            <el-tooltip :content="t('tools.hubTitle')" placement="bottom">
+              <button class="toolbar-entry" :aria-label="t('tools.hubTitle')" @click="openToolsHub">
+                <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8Z" />
+                  <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                  <path d="M3 12h18" />
+                  <path d="M12 13.4v2.2" />
+                </svg>
+              </button>
+            </el-tooltip>
+          </div>
 
           <el-tooltip :content="t('chat.threeD')" placement="bottom">
             <el-switch
@@ -305,17 +319,11 @@ function openToolsHub() {
   font-weight: 700;
 }
 
-.act-btn .btn-ico {
-  width: 13px;
-  height: 13px;
-  margin-right: 4px;
-  vertical-align: -2px;
-  flex-shrink: 0;
-}
-
-.act-btn {
+/* 四个图标按钮统一容器：固定间距，宽度/圆角/描边完全一致 */
+.icon-actions {
   display: inline-flex;
   align-items: center;
+  gap: 10px;
 }
 
 .toolbar-entry {
@@ -329,7 +337,7 @@ function openToolsHub() {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  margin-right: 10px;
+  flex-shrink: 0;
   transition: all 0.15s;
 }
 
