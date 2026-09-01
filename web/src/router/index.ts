@@ -9,6 +9,8 @@ export const router = createRouter({
     { path: '/', name: 'chat', component: () => import('@/views/ChatView.vue') },
     { path: '/favorites', name: 'favorites', component: () => import('@/views/FavoritesView.vue') },
     { path: '/settings', name: 'settings', component: () => import('@/views/PersonalSettingsView.vue') },
+    { path: '/tools', name: 'tools-hub', component: () => import('@/views/ToolsHubView.vue') },
+    { path: '/tools/:key', name: 'tool-page', component: () => import('@/views/ToolPageView.vue') },
     {
       path: '/admin',
       name: 'admin',
@@ -23,6 +25,7 @@ export const router = createRouter({
         { path: 'users', component: () => import('@/views/admin/AdminUsersView.vue') },
         { path: 'roles', component: () => import('@/views/admin/AdminRolesView.vue') },
         { path: 'internal-auth', component: () => import('@/views/admin/AdminInternalAuthView.vue') },
+        { path: 'tools', component: () => import('@/views/admin/AdminToolsView.vue') },
         { path: 'approvals', component: () => import('@/views/admin/AdminApprovalsView.vue') },
         { path: 'audit', component: () => import('@/views/admin/AdminAuditView.vue') },
         { path: 'metrics', component: () => import('@/views/admin/AdminMetricsView.vue') },

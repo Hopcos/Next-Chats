@@ -162,6 +162,11 @@ const themeOptions = [
   { value: 'dawn', labelKey: 'chat.themeDawn' },
   { value: 'midnight', labelKey: 'chat.themeMidnight' },
 ]
+
+/** 沉浸式工具栏：以独立新标签页进入工具主页（与聊天页隔离，互不干扰状态） */
+function openToolsHub() {
+  window.open('/tools', '_blank')
+}
 </script>
 
 <template>
@@ -180,6 +185,17 @@ const themeOptions = [
         </div>
 
         <div class="actions">
+          <el-tooltip :content="t('tools.hubTitle')" placement="bottom">
+            <button class="toolbar-entry" :aria-label="t('tools.hubTitle')" @click="openToolsHub">
+              <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M3 8h18v11a1 1 0 0 1-1 1H4a1 1 0 0 1-1-1V8Z" />
+                <path d="M8 8V6a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+                <path d="M3 12h18" />
+                <path d="M12 13.4v2.2" />
+              </svg>
+            </button>
+          </el-tooltip>
+
           <el-button-group>
             <el-button size="small" class="act-btn" @click="onNewSession">
               <svg class="btn-ico" viewBox="0 0 16 16" aria-hidden="true"><path d="M8 2v12M2 8h12" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" /></svg>
@@ -300,5 +316,26 @@ const themeOptions = [
 .act-btn {
   display: inline-flex;
   align-items: center;
+}
+
+.toolbar-entry {
+  width: 30px;
+  height: 30px;
+  border-radius: 9px;
+  border: 1px solid var(--nc-border);
+  background: var(--nc-surface);
+  color: var(--nc-text-dim, #94a3b8);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  margin-right: 10px;
+  transition: all 0.15s;
+}
+
+.toolbar-entry:hover {
+  color: var(--nc-primary);
+  border-color: var(--nc-primary);
+  box-shadow: 0 0 0 3px color-mix(in srgb, var(--nc-primary) 15%, transparent);
 }
 </style>

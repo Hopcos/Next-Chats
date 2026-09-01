@@ -150,6 +150,34 @@ public class InternalAuthSuccessRule
     public InternalAuthProvider? Provider { get; set; }
 }
 
+/// <summary>沉浸式工具栏条目：ToolKey 对应前端注册的 Cordis 工具插件（唯一标识从已注册插件中选择，非手工输入）；
+/// 权限通过 AllowedRoles 绑定（未绑定 = 仅管理员可用）</summary>
+public class AppTool
+{
+    public Guid Id { get; set; } = Guid.NewGuid();
+
+    /// <summary>唯一标识（对应前端 Cordis 工具插件 key，如 ai-translate），唯一索引</summary>
+    [Required, MaxLength(64)] public string ToolKey { get; set; } = null!;
+
+    /// <summary>显示名称（管理端可自定义）</summary>
+    [Required, MaxLength(64)] public string Name { get; set; } = null!;
+
+    /// <summary>图标：从系统内置图标库中选择（图标 key）</summary>
+    [Required, MaxLength(32)] public string Icon { get; set; } = "puzzle";
+
+    /// <summary>缩略描述（工具主页卡片展示）</summary>
+    [MaxLength(256)] public string? Description { get; set; }
+
+    public bool Enabled { get; set; } = true;
+
+    public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    public DateTimeOffset UpdatedAt { get; set; } = DateTimeOffset.UtcNow;
+
+    /// <summary>可使用此工具的角色（空 = 仅管理员）</summary>
+    public List<AppRole> AllowedRoles { get; set; } = [];
+}
+
 /// <summary>LLM 供应商配置（Server 端统一管理，多供应商 + 基础信息 + 模型子表）</summary>
 public class LlmProvider
 {

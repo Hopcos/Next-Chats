@@ -4,11 +4,13 @@ import enLogin from './locales/en/login'
 import enChat from './locales/en/chat'
 import enSettings from './locales/en/settings'
 import enAdmin from './locales/en/admin'
+import enTools from './locales/en/tools'
 import zhCommon from './locales/zh/common'
 import zhLogin from './locales/zh/login'
 import zhChat from './locales/zh/chat'
 import zhSettings from './locales/zh/settings'
 import zhAdmin from './locales/zh/admin'
+import zhTools from './locales/zh/tools'
 
 export type AppLang = 'en' | 'zh'
 
@@ -38,8 +40,8 @@ function loadLang(): AppLang {
   }
 }
 
-const en = deepAssign({}, enCommon, enLogin, enChat, enSettings, enAdmin)
-const zh = deepAssign({}, zhCommon, zhLogin, zhChat, zhSettings, zhAdmin)
+const en = deepAssign({}, enCommon, enLogin, enChat, enSettings, enAdmin, enTools)
+const zh = deepAssign({}, zhCommon, zhLogin, zhChat, zhSettings, zhAdmin, zhTools)
 
 export const i18n = createI18n({
   legacy: false,

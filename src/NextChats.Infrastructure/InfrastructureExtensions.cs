@@ -171,6 +171,30 @@ public static class InfrastructureExtensions
                 CREATE UNIQUE INDEX "IX_UserRefreshTokens_TokenHash" ON "UserRefreshTokens" ("TokenHash");
                 CREATE INDEX "IX_UserRefreshTokens_UserId_ExpiresAt" ON "UserRefreshTokens" ("UserId", "ExpiresAt");
                 """);
+            // ---------- 沉浸式工具栏（工具注册 + 角色绑定） ----------
+            await AddTableIfMissingAsync(conn, "AppTools", """
+                CREATE TABLE "AppTools" (
+                    "Id" TEXT NOT NULL CONSTRAINT "PK_AppTools" PRIMARY KEY,
+                    "ToolKey" TEXT NOT NULL,
+                    "Name" TEXT NOT NULL,
+                    "Icon" TEXT NOT NULL,
+                    "Description" TEXT,
+                    "Enabled" INTEGER NOT NULL,
+                    "CreatedAt" TEXT NOT NULL,
+                    "UpdatedAt" TEXT NOT NULL
+                );
+                CREATE UNIQUE INDEX "IX_AppTools_ToolKey" ON "AppTools" ("ToolKey");
+                """);
+            await AddTableIfMissingAsync(conn, "AppToolRoleBindings", """
+                CREATE TABLE "AppToolRoleBindings" (
+                    "ToolId" TEXT NOT NULL,
+                    "RoleId" TEXT NOT NULL,
+                    CONSTRAINT "PK_AppToolRoleBindings" PRIMARY KEY ("ToolId", "RoleId"),
+                    CONSTRAINT "FK_AppToolRoleBindings_AppTools_ToolId" FOREIGN KEY ("ToolId") REFERENCES "AppTools" ("Id") ON DELETE CASCADE,
+                    CONSTRAINT "FK_AppToolRoleBindings_Roles_RoleId" FOREIGN KEY ("RoleId") REFERENCES "Roles" ("Id") ON DELETE CASCADE
+                );
+                CREATE INDEX "IX_AppToolRoleBindings_RoleId" ON "AppToolRoleBindings" ("RoleId");
+                """);
         }
         finally
         {

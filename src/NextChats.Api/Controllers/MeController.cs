@@ -85,6 +85,18 @@ public sealed class MeController(
         return Ok(new { prompts, mcps, skills, providers });
     }
 
+    /// <summary>沉浸式工具栏：当前用户可用的启用工具（admin 全量；普通用户按角色绑定过滤）</summary>
+    [HttpGet("tools")]
+    public async Task<IActionResult> Tools()
+    {
+        var user = await admin.GetUserAsync(UserId, includeRoles: true);
+        if (user is null) return NotFound(Err("USER_NOT_FOUND"));
+        var roleIds = user.Roles.Select(r => r.Id).ToArray();
+        var isAdmin = user.Roles.Any(r => r.Code == "admin");
+        var tools = await admin.ListToolsForUserAsync(roleIds, isAdmin);
+        return Ok(tools.Select(t => new { t.Id, key = t.ToolKey, t.Name, t.Icon, t.Description }));
+    }
+
     /// <summary>读取个人设置（JSON 值原样返回，前端解析）</summary>
     [HttpGet("settings")]
     public async Task<IActionResult> GetSettings()

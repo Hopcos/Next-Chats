@@ -19,6 +19,7 @@ const menus = [
   { path: '/admin/skills', labelKey: 'admin.menu.skills', icon: '🛠️' },
   { path: '/admin/users', labelKey: 'admin.menu.users', icon: '👤' },
   { path: '/admin/roles', labelKey: 'admin.menu.roles', icon: '🎭' },
+  { path: '/admin/tools', labelKey: 'admin.menu.tools', icon: '🧰' },
   { path: '/admin/internal-auth', labelKey: 'admin.menu.internalAuth', icon: '🔐' },
   { path: '/admin/approvals', labelKey: 'admin.menu.approvals', icon: '🛡️' },
   { path: '/admin/audit', labelKey: 'admin.menu.audit', icon: '📜' },

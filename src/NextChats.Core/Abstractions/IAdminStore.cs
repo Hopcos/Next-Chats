@@ -122,6 +122,20 @@ public interface IAdminStore
     /// <summary>撤销某用户的全部未撤销刷新令牌（用户被禁用时调用）</summary>
     Task<int> RevokeRefreshTokensForUserAsync(Guid userId, CancellationToken ct = default);
 
+    // ---------- 沉浸式工具栏（管理端维护 + 用户可用列表） ----------
+    Task<IReadOnlyList<AppTool>> ListToolsAsync(CancellationToken ct = default);
+
+    /// <summary>按唯一标识取工具（管理端查重）</summary>
+    Task<AppTool?> GetToolByKeyAsync(string toolKey, CancellationToken ct = default);
+
+    /// <summary>新建（id=Guid.Empty）或整体更新工具（角色绑定全量替换）</summary>
+    Task<AppTool> SaveToolAsync(Guid id, string toolKey, string name, string icon, string? description, bool enabled, Guid[] roleIds, CancellationToken ct = default);
+
+    Task DeleteToolAsync(Guid id, CancellationToken ct = default);
+
+    /// <summary>当前用户可见的启用工具：admin 全量；普通用户=启用且绑定角色命中（未绑定角色的工具仅 admin 可见）</summary>
+    Task<IReadOnlyList<AppTool>> ListToolsForUserAsync(Guid[] roleIds, bool isAdmin, CancellationToken ct = default);
+
     // ---------- 审计 ----------
     Task<IReadOnlyList<AuditLog>> QueryAuditLogsAsync(Guid? userId, DateTimeOffset from, DateTimeOffset to, int take, CancellationToken ct = default);
 }

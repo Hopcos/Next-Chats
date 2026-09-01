@@ -1,4 +1,5 @@
 import { Context } from 'cordis'
+import { toolPlugins } from '@/tools'
 import {
   AuthService,
   CatalogService,
@@ -33,6 +34,8 @@ export function registerPlugins() {
   app.plugin(ChatService)
   // 3D 背景开关
   app.plugin(ThreeService)
+  // 沉浸式工具栏：Cordis 工具插件（插拔清单在 @/tools/index.ts，主应用不依赖任何具体工具）
+  for (const toolPlugin of toolPlugins) app.plugin(toolPlugin)
 }
 
 /** 类型化内核访问器（cordis 运行时按名称注入，类型在此收敛，避免组件里 any） */
