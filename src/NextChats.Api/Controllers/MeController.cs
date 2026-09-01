@@ -28,6 +28,7 @@ public sealed class MeController(
             roles,
             authType = user.AuthType,
             isAdmin = roles.Contains("admin"),
+            isReadonly = user.IsReadonly,
         });
     }
 

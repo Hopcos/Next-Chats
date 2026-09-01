@@ -85,6 +85,8 @@ public static class Texts
         ["APPROVAL_NOT_PENDING"] = ("This approval has already been processed or expired", "该审批已处理或已过期"),
         ["PASSWORD_REQUIRED"] = ("Initial password is required", "初始密码必填"),
         ["CANNOT_DELETE_SELF"] = ("You cannot delete the currently signed-in account", "不能删除当前登录账号"),
+        ["USER_READONLY"] = ("Read-only mode: you can only view the admin panel. To make changes, contact an administrator who can edit.", "只读模式：你仅可查看后台内容，无法进行新增、编辑、删除等操作，如需改动请联系可编辑的管理员。"),
+        ["CANNOT_READONLY_SELF"] = ("You cannot set the currently signed-in account to read-only, otherwise no one would be able to manage the backend", "不能将当前登录账号设为只读，否则将无人可继续管理后台"),
         ["INTERNAL_AUTH_NOT_FOUND"] = ("Authentication method not found", "鉴权配置不存在"),
         ["INTERNAL_AUTH_FIELDS_REQUIRED"] = ("Authentication name and API endpoint are required", "鉴权名称与鉴权中心地址必填"),
         ["INTERNAL_AUTH_NAME_EXISTS"] = ("An authentication method with this name already exists", "已存在同名鉴权配置"),

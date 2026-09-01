@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
@@ -7,6 +7,9 @@ import type { SkillDto } from '@/api/types'
 import { kernel } from '@/kernel'
 
 const { t } = useI18n()
+
+/** 当前账号只读：仅可查看后台，写操作全部禁用 */
+const ro = computed(() => kernel.auth.state.user?.isReadonly ?? false)
 
 // 模板语法字面量（避开 Vue 模板编译器对 {{ }} 的插值解析）
 const syntaxInput = '{{' + 'input' + '}}'
@@ -90,7 +93,7 @@ onMounted(load)
   <div>
     <div class="head">
       <h3>{{ t('admin.skills.title') }}</h3>
-      <el-button type="primary" @click="openCreate">{{ t('admin.skills.create') }}</el-button>
+      <el-button type="primary" :disabled="ro" @click="openCreate">{{ t('admin.skills.create') }}</el-button>
     </div>
     <el-table :data="list" v-loading="loading" size="small" stripe>
       <el-table-column prop="name" :label="t('common.name')" width="140" />
@@ -103,8 +106,8 @@ onMounted(load)
       </el-table-column>
       <el-table-column :label="t('common.actions')" width="140" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" text @click="openEdit(row)">{{ t('common.edit') }}</el-button>
-          <el-button size="small" text type="danger" @click="remove(row)">{{ t('common.delete') }}</el-button>
+          <el-button size="small" text :disabled="ro" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+          <el-button size="small" text type="danger" :disabled="ro" @click="remove(row)">{{ t('common.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -127,7 +130,7 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="dialogOpen = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :disabled="ro" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

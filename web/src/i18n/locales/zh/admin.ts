@@ -1,6 +1,7 @@
 // Admin 区域文案（中文）——由 Admin 页面 i18n 化任务填充
 export default {
   admin: {
+    readonlyBanner: '只读模式：你仅可查看后台内容，无法进行新增、编辑、删除等操作',
     menu: {
       llm: 'LLM 供应商',
       mcp: 'MCP 服务器',
@@ -161,6 +162,9 @@ export default {
       saveFailed: '保存失败',
       saved: '已保存',
       deleteConfirm: '删除用户「{username}」？',
+      readonly: '只读',
+      readonlyTip: '只读用户仅可查看后台，不能新增、编辑、删除任何内容',
+      readonlySelfBlocked: '不能将当前登录账号设为只读，否则将无人可继续管理后台',
     },
     roles: {
       title: '角色与绑定（角色 ↔ MCP / Prompt / SKILL）',

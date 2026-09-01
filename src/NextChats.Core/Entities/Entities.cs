@@ -27,6 +27,13 @@ public class AppUser
 
     public UserStatus Status { get; set; } = UserStatus.Active;
 
+    /// <summary>
+    /// 只读模式（默认否）：即使拥有 admin 角色，也只能查看后台内容，
+    /// 无法对管理端做任何新增/编辑/删除等写操作（由 AdminReadonlyGuard 强制拦截）。
+    /// 用户自己的会话/收藏等个人数据操作不受影响。
+    /// </summary>
+    public bool IsReadonly { get; set; }
+
     public DateTimeOffset CreatedAt { get; set; } = DateTimeOffset.UtcNow;
 
     public DateTimeOffset? LastLoginAt { get; set; }

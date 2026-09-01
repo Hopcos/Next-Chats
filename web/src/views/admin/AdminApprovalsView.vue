@@ -1,11 +1,14 @@
 <script setup lang="ts">
-import { onMounted, ref } from 'vue'
+import { computed, onMounted, ref } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
 import type { ToolApprovalDto } from '@/api/types'
 import { kernel } from '@/kernel'
 
 const { t } = useI18n()
+
+/** 当前账号只读：仅可查看后台，审批/驳回等写操作全部禁用 */
+const ro = computed(() => kernel.auth.state.user?.isReadonly ?? false)
 
 const list = ref<ToolApprovalDto[]>([])
 const statusFilter = ref('')
@@ -83,8 +86,8 @@ onMounted(load)
       <el-table-column :label="t('common.actions')" width="140" fixed="right">
         <template #default="{ row }">
           <template v-if="row.status === 'Pending'">
-            <el-button size="small" type="success" plain @click="decide(row, true)">{{ t('admin.approvals.approve') }}</el-button>
-            <el-button size="small" type="danger" plain @click="decide(row, false)">{{ t('admin.approvals.reject') }}</el-button>
+            <el-button size="small" type="success" plain :disabled="ro" @click="decide(row, true)">{{ t('admin.approvals.approve') }}</el-button>
+            <el-button size="small" type="danger" plain :disabled="ro" @click="decide(row, false)">{{ t('admin.approvals.reject') }}</el-button>
           </template>
           <span v-else class="nc-dim">{{ t('common.placeholderDash') }}</span>
         </template>

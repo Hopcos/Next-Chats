@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
@@ -7,6 +7,9 @@ import type { InternalAuthProviderDto, InternalAuthSuccessRuleDto, RoleDto } fro
 import { kernel } from '@/kernel'
 
 const { t } = useI18n()
+
+/** 当前账号只读：仅可查看后台，写操作全部禁用 */
+const ro = computed(() => kernel.auth.state.user?.isReadonly ?? false)
 
 const providers = ref<InternalAuthProviderDto[]>([])
 const allRoles = ref<RoleDto[]>([])
@@ -161,7 +164,7 @@ onMounted(load)
   <div>
     <div class="head">
       <h3>{{ t('admin.internalAuth.title') }}</h3>
-      <el-button type="primary" @click="openCreate">{{ t('admin.internalAuth.create') }}</el-button>
+      <el-button type="primary" :disabled="ro" @click="openCreate">{{ t('admin.internalAuth.create') }}</el-button>
     </div>
 
     <el-table :data="providers" v-loading="loading" size="small" stripe>
@@ -189,9 +192,9 @@ onMounted(load)
       </el-table-column>
       <el-table-column :label="t('common.actions')" width="200" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" type="primary" plain @click="testProvider(row)">{{ t('admin.internalAuth.test') }}</el-button>
-          <el-button size="small" text @click="openEdit(row)">{{ t('common.edit') }}</el-button>
-          <el-button size="small" text type="danger" @click="remove(row)">{{ t('common.delete') }}</el-button>
+          <el-button size="small" type="primary" plain :disabled="ro" @click="testProvider(row)">{{ t('admin.internalAuth.test') }}</el-button>
+          <el-button size="small" text :disabled="ro" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+          <el-button size="small" text type="danger" :disabled="ro" @click="remove(row)">{{ t('common.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -232,9 +235,9 @@ onMounted(load)
                 style="width: 160px"
               />
               <span v-else class="muted" style="width: 160px">{{ t('admin.internalAuth.notEmptyHint') }}</span>
-              <el-button size="small" text type="danger" @click="removeRule(i)">✕</el-button>
+              <el-button size="small" text type="danger" :disabled="ro" @click="removeRule(i)">✕</el-button>
             </div>
-            <el-button size="small" plain @click="addRule">＋ {{ t('admin.internalAuth.addRule') }}</el-button>
+            <el-button size="small" plain :disabled="ro" @click="addRule">＋ {{ t('admin.internalAuth.addRule') }}</el-button>
           </div>
         </el-form-item>
         <el-form-item :label="t('admin.internalAuth.defaultRoles')">
@@ -251,7 +254,7 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="dialogOpen = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :disabled="ro" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

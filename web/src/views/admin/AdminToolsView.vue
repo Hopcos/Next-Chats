@@ -17,6 +17,9 @@ import ToolIcon from '@/tools/ToolIcon.vue'
 
 const { t } = useI18n()
 
+/** 当前账号只读：仅可查看后台，写操作全部禁用 */
+const ro = computed(() => kernel.auth.state.user?.isReadonly ?? false)
+
 interface AdminToolDto {
   id: string
   toolKey: string
@@ -150,7 +153,7 @@ async function onDelete(row: AdminToolDto) {
   <div>
     <div class="head">
       <h2 class="nc-page-title">{{ t('admin.tools.title') }}</h2>
-      <el-button type="primary" size="small" @click="openCreate">{{ t('admin.tools.create') }}</el-button>
+      <el-button type="primary" size="small" :disabled="ro" @click="openCreate">{{ t('admin.tools.create') }}</el-button>
     </div>
     <p class="tip">{{ t('admin.tools.tip') }}</p>
 
@@ -178,8 +181,8 @@ async function onDelete(row: AdminToolDto) {
       </el-table-column>
       <el-table-column :label="t('common.actions')" width="130">
         <template #default="{ row }">
-          <el-button size="small" text type="primary" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
-          <el-button size="small" text type="danger" @click="onDelete(row)">{{ t('common.delete') }}</el-button>
+          <el-button size="small" text type="primary" :disabled="ro" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+          <el-button size="small" text type="danger" :disabled="ro" @click="onDelete(row)">{{ t('common.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -237,7 +240,7 @@ async function onDelete(row: AdminToolDto) {
 
       <template #footer>
         <el-button @click="dialogOpen = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" :loading="saving" @click="onSave">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :loading="saving" :disabled="ro" @click="onSave">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

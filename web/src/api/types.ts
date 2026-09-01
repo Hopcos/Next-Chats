@@ -7,6 +7,8 @@ export interface UserProfile {
   email?: string
   roles: string[]
   isAdmin: boolean
+  /** 只读模式：即使拥有 admin 角色也只能查看后台，不能新增/编辑/删除 */
+  isReadonly?: boolean
   /** 账号类型：default=本地密码账号；其他（acs…）=内部鉴权账号 */
   authType?: string
 }
@@ -131,6 +133,8 @@ export interface UserDto {
   status: string
   /** 账号类型：default=本地密码账号；其他（acs…）=内部鉴权账号 */
   authType?: string
+  /** 只读模式：仅可查看后台，不能新增/编辑/删除 */
+  isReadonly?: boolean
   createdAt: string
   lastLoginAt?: string
   roles: { id: string; name: string; code: string }[]

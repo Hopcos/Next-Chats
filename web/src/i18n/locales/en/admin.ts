@@ -1,6 +1,7 @@
 // Admin 区域文案（英文）——由 Admin 页面 i18n 化任务填充
 export default {
   admin: {
+    readonlyBanner: 'Read-only mode: you can only view the backend; creating, editing, and deleting are disabled',
     menu: {
       llm: 'LLM Providers',
       mcp: 'MCP Servers',
@@ -161,6 +162,9 @@ export default {
       saveFailed: 'Save failed',
       saved: 'Saved',
       deleteConfirm: 'Delete user "{username}"?',
+      readonly: 'Read-only',
+      readonlyTip: 'Read-only users can only view the backend; they cannot create, edit, or delete anything',
+      readonlySelfBlocked: 'You cannot set the currently signed-in account to read-only, otherwise nobody could manage the backend',
     },
     roles: {
       title: 'Roles & Bindings (role ↔ MCP / Prompt / SKILL)',

@@ -1,9 +1,13 @@
 <script setup lang="ts">
-import { ref } from 'vue'
+import { computed, ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+import { kernel } from '@/kernel'
 
 const route = useRoute()
 const router = useRouter()
+
+/** 只读模式：仅可查看后台，所有写操作（新增/编辑/删除）被服务端拦截并被前端禁用 */
+const isReadonly = computed(() => kernel.auth.state.user?.isReadonly ?? false)
 
 const collapsed = ref(localStorage.getItem('nextchats.admin.collapsed') === '1')
 
@@ -60,8 +64,14 @@ function isActive(path: string) {
         </el-button>
       </div>
     </aside>
-    <main class="content nc-scroll">
-      <router-view />
+    <main class="main">
+      <div v-if="isReadonly" class="ro-banner">
+        <span class="ro-icon">🔒</span>
+        <span>{{ $t('admin.readonlyBanner') }}</span>
+      </div>
+      <div class="content nc-scroll">
+        <router-view />
+      </div>
     </main>
   </div>
 </template>
@@ -151,6 +161,29 @@ function isActive(path: string) {
 .back {
   margin-top: auto;
   padding: 8px 6px 0;
+}
+
+.main {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+}
+
+.ro-banner {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 7px 16px;
+  font-size: 12.5px;
+  color: #92400e;
+  background: #fef3c7;
+  border-bottom: 1px solid #fde68a;
+}
+
+.ro-icon {
+  font-size: 13px;
 }
 
 .content {

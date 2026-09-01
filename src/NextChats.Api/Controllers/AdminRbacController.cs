@@ -16,12 +16,12 @@ public sealed class AdminUserController(IAdminStore store, ISecurityService secu
         return Ok(users.Select(u => new
         {
             u.Id, u.Username, u.DisplayName, u.Email, status = u.Status.ToString(), authType = u.AuthType,
-            u.CreatedAt, u.LastLoginAt,
+            isReadonly = u.IsReadonly, u.CreatedAt, u.LastLoginAt,
             roles = u.Roles.Select(r => new { r.Id, r.Name, r.Code }).ToList(),
         }));
     }
 
-    public sealed record UserInput(string Username, string? DisplayName, string? Email, string? Password, string? Status, Guid[]? RoleIds);
+    public sealed record UserInput(string Username, string? DisplayName, string? Email, string? Password, string? Status, Guid[]? RoleIds, bool? IsReadonly = null);
 
     [HttpPost]
     public async Task<IActionResult> Create([FromBody] UserInput input)
@@ -39,6 +39,7 @@ public sealed class AdminUserController(IAdminStore store, ISecurityService secu
             PasswordHash = hash,
             PasswordSalt = salt,
             Status = Enum.TryParse<UserStatus>(input.Status, true, out var s) ? s : UserStatus.Active,
+            IsReadonly = input.IsReadonly ?? false,
         };
         var saved = await store.CreateUserAsync(user, input.RoleIds ?? []);
         await audit.RecordAsync(AuditCategory.Admin, "USER.CREATE", $"trc_{Guid.NewGuid():N}"[..24], UserId, saved.Username);
@@ -50,8 +51,14 @@ public sealed class AdminUserController(IAdminStore store, ISecurityService secu
     {
         var user = await store.GetUserAsync(id);
         if (user is null) return NotFound(Err("USER_NOT_FOUND"));
+        // 防自锁：任何人不能把自己设为只读（否则后台将无人可管理）
+        if (id == UserId && input.IsReadonly == true)
+        {
+            return BadRequest(Err("CANNOT_READONLY_SELF"));
+        }
         user.DisplayName = input.DisplayName;
         user.Email = input.Email;
+        user.IsReadonly = input.IsReadonly ?? user.IsReadonly;
         if (!string.IsNullOrWhiteSpace(input.Password))
         {
             var (hash, salt) = security.HashPassword(input.Password);

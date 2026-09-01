@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
@@ -15,8 +15,15 @@ const dialogOpen = ref(false)
 const editingId = ref<string | null>(null)
 
 const form = reactive({
-  username: '', displayName: '', email: '', password: '', status: 'Active', roleIds: [] as string[],
+  username: '', displayName: '', email: '', password: '', status: 'Active', roleIds: [] as string[], isReadonly: false,
 })
+
+/** 当前登录账号自身（禁止将自己设为只读，防止后台无人可管理） */
+const self = kernel.auth.state.user
+const isEditingSelf = computed(() => editingId.value !== null && editingId.value === self?.id)
+
+/** 当前登录账号只读：仅可查看，所有写操作禁用 */
+const ro = computed(() => self?.isReadonly ?? false)
 
 async function load() {
   loading.value = true
@@ -36,7 +43,7 @@ async function load() {
 
 function openCreate() {
   editingId.value = null
-  Object.assign(form, { username: '', displayName: '', email: '', password: '', status: 'Active', roleIds: [] })
+  Object.assign(form, { username: '', displayName: '', email: '', password: '', status: 'Active', roleIds: [], isReadonly: false })
   dialogOpen.value = true
 }
 
@@ -45,6 +52,7 @@ function openEdit(row: UserDto) {
   Object.assign(form, {
     username: row.username, displayName: row.displayName ?? '', email: row.email ?? '',
     password: '', status: row.status, roleIds: row.roles.map((r) => r.id),
+    isReadonly: row.isReadonly ?? false,
   })
   dialogOpen.value = true
 }
@@ -54,6 +62,7 @@ async function save() {
     const body = {
       username: form.username, displayName: form.displayName, email: form.email,
       password: form.password || undefined, status: form.status, roleIds: form.roleIds,
+      isReadonly: form.isReadonly,
     }
     if (editingId.value) {
       await http.put(`/api/admin/users/${editingId.value}`, body)
@@ -85,7 +94,7 @@ onMounted(load)
   <div>
     <div class="head">
       <h3>{{ t('admin.users.title') }}</h3>
-      <el-button type="primary" @click="openCreate">{{ t('admin.users.create') }}</el-button>
+      <el-button type="primary" :disabled="ro" :title="ro ? t('admin.readonlyBanner') : undefined" @click="openCreate">{{ t('admin.users.create') }}</el-button>
     </div>
     <el-table :data="users" v-loading="loading" size="small" stripe>
       <el-table-column prop="username" :label="t('admin.users.username')" width="140" />
@@ -110,10 +119,16 @@ onMounted(load)
           <el-tag :type="row.status === 'Active' ? 'success' : 'info'" size="small">{{ row.status }}</el-tag>
         </template>
       </el-table-column>
+      <el-table-column :label="t('admin.users.readonly')" width="90">
+        <template #default="{ row }">
+          <el-tag v-if="row.isReadonly" type="warning" size="small">{{ t('common.yes') }}</el-tag>
+          <span v-else class="nc-dim">{{ t('common.no') }}</span>
+        </template>
+      </el-table-column>
       <el-table-column :label="t('common.actions')" width="140" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" text @click="openEdit(row)">{{ t('common.edit') }}</el-button>
-          <el-button size="small" text type="danger" @click="remove(row)">{{ t('common.delete') }}</el-button>
+          <el-button size="small" text :disabled="ro" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+          <el-button size="small" text type="danger" :disabled="ro" @click="remove(row)">{{ t('common.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -137,10 +152,18 @@ onMounted(load)
             <el-option v-for="r in roles" :key="r.id" :label="r.name" :value="r.id" />
           </el-select>
         </el-form-item>
+        <el-form-item :label="t('admin.users.readonly')">
+          <div>
+            <el-switch v-model="form.isReadonly" :disabled="isEditingSelf" :title="isEditingSelf ? t('admin.users.readonlySelfBlocked') : t('admin.users.readonlyTip')" />
+            <div class="nc-dim" style="font-size: 12px; line-height: 1.5; margin-top: 2px">
+              {{ isEditingSelf ? t('admin.users.readonlySelfBlocked') : t('admin.users.readonlyTip') }}
+            </div>
+          </div>
+        </el-form-item>
       </el-form>
       <template #footer>
         <el-button @click="dialogOpen = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :disabled="ro" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

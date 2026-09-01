@@ -114,6 +114,8 @@ public static class InfrastructureExtensions
                 """);
             // ---------- 内部鉴权：账号类型列 + (AuthType, Username) 组合唯一索引 ----------
             await AddColumnIfMissingAsync(conn, "Users", "AuthType", "TEXT NOT NULL DEFAULT 'default'");
+            // 只读模式（默认 false）：管理员可被标记为只读，仅可查看后台
+            await AddColumnIfMissingAsync(conn, "Users", "IsReadonly", "INTEGER NOT NULL DEFAULT 0");
             await RebuildUserUniqueIndexAsync(conn);
             await AddTableIfMissingAsync(conn, "InternalAuthProviders", """
                 CREATE TABLE "InternalAuthProviders" (

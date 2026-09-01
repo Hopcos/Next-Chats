@@ -1,6 +1,8 @@
 using System.Text.Json.Serialization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Mvc.Filters;
+using NextChats.Core.Abstractions;
 using NextChats.Core.Localization;
 
 namespace NextChats.Api.Controllers;
@@ -50,8 +52,49 @@ public abstract class ApiControllerBase : ControllerBase
     protected ApiErrorBody Err(string code, params object?[] args) => new(code, Texts.Get(code, Lang, args));
 }
 
-/// <summary>管理端基类（角色隔离：仅 admin 角色可访问）</summary>
+/// <summary>
+/// 只读模式守卫：标记为只读的用户（即使拥有 admin 角色）对管理端写操作一律 403。
+/// 逐请求读取数据库中的 IsReadonly，因此置位立即生效（不受 JWT 30 分钟窗口影响）。
+/// </summary>
+[AttributeUsage(AttributeTargets.Class)]
+public sealed class AdminReadonlyGuardAttribute : Attribute, IAsyncActionFilter
+{
+    public async Task OnActionExecutionAsync(ActionExecutingContext context, ActionExecutionDelegate next)
+    {
+        var method = context.HttpContext.Request.Method;
+        if (method is "GET" or "HEAD" or "OPTIONS")
+        {
+            await next();
+            return;
+        }
+
+        var uidRaw = context.HttpContext.User.FindFirst("uid")?.Value;
+        if (Guid.TryParse(uidRaw, out var uid))
+        {
+            var store = context.HttpContext.RequestServices.GetRequiredService<IAdminStore>();
+            var user = await store.GetUserAsync(uid, ct: context.HttpContext.RequestAborted);
+            if (user is { IsReadonly: true })
+            {
+                var lang = context.HttpContext.Request.Headers["X-Lang"].ToString();
+                await context.HttpContext.RequestServices.GetRequiredService<IAuditLogger>().RecordAsync(
+                    Core.Domain.AuditCategory.Admin, "ADMIN.WRITE_BLOCKED", $"trc_{Guid.NewGuid():N}"[..24], uid,
+                    ip: context.HttpContext.Connection.RemoteIpAddress?.ToString(),
+                    detail: new { method, path = context.HttpContext.Request.Path.ToString(), reason = "readonly" });
+                context.Result = new ObjectResult(new ApiErrorBody("USER_READONLY", Texts.Get("USER_READONLY", lang)))
+                {
+                    StatusCode = StatusCodes.Status403Forbidden,
+                };
+                return;
+            }
+        }
+
+        await next();
+    }
+}
+
+/// <summary>管理端基类（角色隔离：仅 admin 角色可访问；只读用户禁止写操作）</summary>
 [Authorize(Policy = "admin")]
+[AdminReadonlyGuard]
 [Route("api/admin/[controller]")]
 public abstract class AdminControllerBase : ApiControllerBase
 {

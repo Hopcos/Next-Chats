@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
@@ -7,6 +7,9 @@ import type { LlmModelDto, LlmProviderDto } from '@/api/types'
 import { kernel } from '@/kernel'
 
 const { t } = useI18n()
+
+/** 当前账号只读：仅可查看后台，写操作全部禁用 */
+const ro = computed(() => kernel.auth.state.user?.isReadonly ?? false)
 
 const list = ref<LlmProviderDto[]>([])
 const loading = ref(false)
@@ -207,7 +210,7 @@ onMounted(load)
           <div class="expand">
             <div class="sec-title">
               {{ t('admin.llm.models', { count: row.models.length }) }}
-              <el-button size="small" text type="primary" @click="openModelCreate(row)">＋ {{ t('admin.llm.addModel') }}</el-button>
+              <el-button size="small" text type="primary" :disabled="ro" @click="openModelCreate(row)">＋ {{ t('admin.llm.addModel') }}</el-button>
             </div>
             <div v-if="row.models.length === 0" class="nc-dim">{{ t('admin.llm.noModels') }}</div>
             <el-table :data="row.models" size="small">
@@ -228,8 +231,8 @@ onMounted(load)
               </el-table-column>
               <el-table-column :label="t('common.actions')" width="150">
                 <template #default="{ row: m, $index }">
-                  <el-button size="small" text :disabled="row.models.length <= 1" @click="removeModel(m)">{{ t('common.delete') }}</el-button>
-                  <el-button size="small" text @click="openModelEdit(m)">{{ t('common.edit') }}</el-button>
+                  <el-button size="small" text :disabled="ro || row.models.length <= 1" @click="removeModel(m)">{{ t('common.delete') }}</el-button>
+                  <el-button size="small" text :disabled="ro" @click="openModelEdit(m)">{{ t('common.edit') }}</el-button>
                   <span v-if="$index === 0" class="nc-dim primary-tag" :title="t('admin.llm.defaultModelHint')">{{ t('admin.llm.defaultModel') }}</span>
                 </template>
               </el-table-column>
@@ -261,10 +264,10 @@ onMounted(load)
       <el-table-column :label="t('common.actions')" width="330" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-button size="small" text type="primary" @click="fetchModelsFor(row)">{{ t('admin.llm.fetchModels') }}</el-button>
-            <el-button size="small" text @click="ping(row)">{{ t('common.ping') }}</el-button>
-            <el-button size="small" text @click="openEdit(row)">{{ t('common.edit') }}</el-button>
-            <el-button size="small" text type="danger" @click="remove(row)">{{ t('common.delete') }}</el-button>
+            <el-button size="small" text type="primary" :disabled="ro" @click="fetchModelsFor(row)">{{ t('admin.llm.fetchModels') }}</el-button>
+            <el-button size="small" text :disabled="ro" @click="ping(row)">{{ t('common.ping') }}</el-button>
+            <el-button size="small" text :disabled="ro" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+            <el-button size="small" text type="danger" :disabled="ro" @click="remove(row)">{{ t('common.delete') }}</el-button>
           </div>
         </template>
       </el-table-column>
@@ -295,8 +298,8 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="dialogOpen = false">{{ t('common.cancel') }}</el-button>
-        <el-button :loading="fetchingModels" type="primary" plain @click="fetchModels">{{ t('admin.llm.fetchModels') }}</el-button>
-        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
+        <el-button :loading="fetchingModels" type="primary" plain :disabled="ro" @click="fetchModels">{{ t('admin.llm.fetchModels') }}</el-button>
+        <el-button type="primary" :disabled="ro" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
 
@@ -313,7 +316,7 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="modelDialogOpen = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="saveModel">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :disabled="ro" @click="saveModel">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

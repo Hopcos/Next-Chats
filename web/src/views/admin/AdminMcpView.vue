@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
@@ -7,6 +7,9 @@ import type { McpServerDto } from '@/api/types'
 import { kernel } from '@/kernel'
 
 const { t } = useI18n()
+
+/** 当前账号只读：仅可查看后台，写操作全部禁用 */
+const ro = computed(() => kernel.auth.state.user?.isReadonly ?? false)
 
 const list = ref<McpServerDto[]>([])
 const loading = ref(false)
@@ -170,7 +173,7 @@ onMounted(load)
   <div>
     <div class="head">
       <h3>{{ t('admin.mcp.title') }}</h3>
-      <el-button type="primary" @click="openCreate">{{ t('admin.mcp.create') }}</el-button>
+      <el-button type="primary" :disabled="ro" @click="openCreate">{{ t('admin.mcp.create') }}</el-button>
     </div>
 
     <el-table :data="list" v-loading="loading" size="small" stripe>
@@ -190,7 +193,7 @@ onMounted(load)
               <el-table-column prop="description" :label="t('common.description')" show-overflow-tooltip />
               <el-table-column :label="t('common.enabled')" width="90">
                 <template #default="{ row: it }">
-                  <el-switch :model-value="it.enabled" size="small" @change="(v: boolean) => toggleItem(it.id, v)" />
+                  <el-switch :model-value="it.enabled" size="small" :disabled="ro" @change="(v: boolean) => toggleItem(it.id, v)" />
                 </template>
               </el-table-column>
             </el-table>
@@ -208,7 +211,7 @@ onMounted(load)
       <el-table-column prop="toolCount" :label="t('admin.mcp.tools')" width="60" />
       <el-table-column :label="t('common.enabled')" width="80">
         <template #default="{ row }">
-          <el-switch :model-value="row.enabled" size="small" @change="(v: boolean) => toggleServer(row, v)" />
+          <el-switch :model-value="row.enabled" size="small" :disabled="ro" @change="(v: boolean) => toggleServer(row, v)" />
         </template>
       </el-table-column>
       <el-table-column :label="t('admin.mcp.isVision')" width="90">
@@ -219,10 +222,10 @@ onMounted(load)
       <el-table-column :label="t('common.actions')" width="330" fixed="right">
         <template #default="{ row }">
           <div class="row-actions">
-            <el-button size="small" type="primary" plain :loading="fetchingId === row.id" @click="fetchCatalog(row)">{{ t('admin.mcp.fetch') }}</el-button>
-            <el-button size="small" text @click="ping(row)">{{ t('common.ping') }}</el-button>
-            <el-button size="small" text @click="openEdit(row)">{{ t('common.edit') }}</el-button>
-            <el-button size="small" text type="danger" @click="remove(row)">{{ t('common.delete') }}</el-button>
+            <el-button size="small" type="primary" plain :loading="fetchingId === row.id" :disabled="ro" @click="fetchCatalog(row)">{{ t('admin.mcp.fetch') }}</el-button>
+            <el-button size="small" text :disabled="ro" @click="ping(row)">{{ t('common.ping') }}</el-button>
+            <el-button size="small" text :disabled="ro" @click="openEdit(row)">{{ t('common.edit') }}</el-button>
+            <el-button size="small" text type="danger" :disabled="ro" @click="remove(row)">{{ t('common.delete') }}</el-button>
           </div>
         </template>
       </el-table-column>
@@ -257,7 +260,7 @@ onMounted(load)
         <el-form-item :label="t('admin.mcp.instructions')">
           <div class="instr-wrap">
             <el-input v-model="form.instructions" type="textarea" :rows="4" :placeholder="t('admin.mcp.instructionsPlaceholder')" />
-            <el-button class="instr-fetch" size="small" type="primary" plain :loading="dialogFetching" @click="fetchInDialog">
+            <el-button class="instr-fetch" size="small" type="primary" plain :loading="dialogFetching" :disabled="ro" @click="fetchInDialog">
               {{ t('admin.mcp.fetch') }}
             </el-button>
           </div>
@@ -265,7 +268,7 @@ onMounted(load)
       </el-form>
       <template #footer>
         <el-button @click="dialogOpen = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="save">{{ t('common.save') }}</el-button>
+        <el-button type="primary" :disabled="ro" @click="save">{{ t('common.save') }}</el-button>
       </template>
     </el-dialog>
   </div>

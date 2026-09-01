@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, reactive, ref } from 'vue'
+import { computed, onMounted, reactive, ref } from 'vue'
 import { ElMessageBox } from 'element-plus'
 import { useI18n } from 'vue-i18n'
 import { http } from '@/api/http'
@@ -7,6 +7,9 @@ import type { LlmProviderDto, McpServerDto, PromptDto, RoleDto, SkillDto } from 
 import { kernel } from '@/kernel'
 
 const { t } = useI18n()
+
+/** 当前账号只读：仅可查看后台，写操作全部禁用 */
+const ro = computed(() => kernel.auth.state.user?.isReadonly ?? false)
 
 const roles = ref<RoleDto[]>([])
 const allMcps = ref<McpServerDto[]>([])
@@ -106,7 +109,7 @@ onMounted(load)
   <div>
     <div class="head">
       <h3>{{ t('admin.roles.title') }}</h3>
-      <el-button type="primary" @click="createRole">{{ t('admin.roles.create') }}</el-button>
+      <el-button type="primary" :disabled="ro" @click="createRole">{{ t('admin.roles.create') }}</el-button>
     </div>
 
     <el-table :data="roles" v-loading="loading" size="small" stripe>
@@ -130,8 +133,8 @@ onMounted(load)
       </el-table-column>
       <el-table-column :label="t('common.actions')" width="160" fixed="right">
         <template #default="{ row }">
-          <el-button size="small" type="primary" plain @click="openBindings(row)">{{ t('admin.roles.bind') }}</el-button>
-          <el-button size="small" text type="danger" @click="remove(row)">{{ t('common.delete') }}</el-button>
+          <el-button size="small" type="primary" plain :disabled="ro" @click="openBindings(row)">{{ t('admin.roles.bind') }}</el-button>
+          <el-button size="small" text type="danger" :disabled="ro" @click="remove(row)">{{ t('common.delete') }}</el-button>
         </template>
       </el-table-column>
     </el-table>
@@ -166,7 +169,7 @@ onMounted(load)
 
       <template #footer>
         <el-button @click="bindDialog = false">{{ t('common.cancel') }}</el-button>
-        <el-button type="primary" @click="saveBindings">{{ t('admin.roles.saveBindings') }}</el-button>
+        <el-button type="primary" :disabled="ro" @click="saveBindings">{{ t('admin.roles.saveBindings') }}</el-button>
       </template>
     </el-dialog>
   </div>

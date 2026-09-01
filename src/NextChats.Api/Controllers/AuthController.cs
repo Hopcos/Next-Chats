@@ -104,6 +104,7 @@ public sealed class AuthController(
                 roles,
                 authType = user.AuthType,
                 isAdmin = roles.Contains("admin"),
+                isReadonly = user.IsReadonly,
             },
         });
     }
