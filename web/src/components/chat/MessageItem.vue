@@ -9,6 +9,7 @@ import { kernel } from '@/kernel'
 import { copyText } from '@/utils/clipboard'
 import { captureElementToPng, downloadBlob, stamp } from '@/utils/capture'
 import { installMarkdownMath } from '@/utils/markdownMath'
+import { canFormat, formatCode, highlightCode, hljs } from '@/utils/codeBlock'
 import 'katex/dist/katex.min.css'
 
 const props = defineProps<{ message: UiMessage }>()
@@ -175,7 +176,22 @@ md.renderer.rules.fence = (tokens, idx, options, env, self) => {
   if (info === 'mermaid' || info.startsWith('mermaid ')) {
     return `<pre class="mermaid">${md.utils.escapeHtml(tok.content)}</pre>\n`
   }
-  return defaultFence ? defaultFence(tokens, idx, options, env, self) : self.renderToken(tokens, idx, options)
+  // 代码块增强：语言高亮 + 顶栏（语言标签 / 格式化·复制按钮）
+  const lang = (tok.info ?? '').trim().split(/\s+/)[0].toLowerCase()
+  const safeLang = lang.replace(/[^\w-]/g, '')
+  const label = lang || 'text'
+  const body = highlightCode(tok.content, lang)
+  const formatBtn = canFormat(lang)
+    ? `<button type="button" class="code-act" data-act="format" data-lang="${md.utils.escapeHtml(lang)}">🪄 <span>${t('chat.formatCode')}</span></button>`
+    : ''
+  return (
+    `<div class="code-wrap">` +
+    `<div class="code-bar"><span class="code-lang">${md.utils.escapeHtml(label)}</span>` +
+    `<span class="code-actions">${formatBtn}` +
+    `<button type="button" class="code-act" data-act="copy" data-lang="${md.utils.escapeHtml(lang)}">📋 <span>${t('chat.copyCode')}</span></button></span></div>` +
+    `<pre><code class="language-${safeLang} hljs" data-lang="${md.utils.escapeHtml(lang)}">${body}</code></pre>` +
+    `</div>\n`
+  )
 }
 
 mermaid.initialize({ startOnLoad: false, theme: 'default', securityLevel: 'loose' })
@@ -268,6 +284,53 @@ function applyMermaidView(box: HTMLDivElement, v: MermaidView) {
     src?.remove()
   }
   box.classList.toggle('dragging', v.dragging)
+}
+
+/** 复制代码块内容（当前 DOM 文本，含已格式化结果） */
+async function copyCodeBlock(btn: HTMLButtonElement) {
+  const code = btn.closest('.code-wrap')?.querySelector('code')
+  const text = code?.textContent ?? ''
+  if (text && (await copyText(text))) {
+    kernel.notify.success(t('chat.copied'))
+  } else if (!text) {
+    kernel.notify.warning(t('chat.copyFailed'))
+  }
+}
+
+/** 按语言格式化代码块（prettier standalone 按需加载）；失败提示不支持 */
+async function formatCodeBlock(btn: HTMLButtonElement) {
+  const lang = btn.dataset.lang ?? ''
+  const wrap = btn.closest('.code-wrap')
+  const code = wrap?.querySelector('code')
+  if (!code) return
+  const label = btn.querySelector('span')
+  const origLabel = label?.textContent
+  btn.disabled = true
+  if (label) label.textContent = '…'
+  try {
+    const formatted = await formatCode(lang, code.textContent ?? '')
+    code.textContent = formatted
+    if (code.classList.contains('hljs')) {
+      void hljs.highlightElement(code)
+    }
+    kernel.notify.success(t('chat.formatDone'))
+  } catch {
+    kernel.notify.error(t('chat.formatFailed'))
+  } finally {
+    btn.disabled = false
+    if (label && origLabel) label.textContent = origLabel
+  }
+}
+
+/** 消息正文统一点击处理：代码块复制/格式化 → 其余（Mermaid 工具栏等） */
+function onContentClick(e: MouseEvent) {
+  const btn = (e.target as HTMLElement).closest<HTMLButtonElement>('button[data-act].code-act')
+  if (btn) {
+    if (btn.dataset.act === 'copy') void copyCodeBlock(btn)
+    else if (btn.dataset.act === 'format') void formatCodeBlock(btn)
+    return
+  }
+  onMermaidToolsClick(e)
 }
 
 function onMermaidToolsClick(e: MouseEvent) {
@@ -414,7 +477,7 @@ function prettyArgs(raw?: string): string {
       <!-- 正文（打字机揭示 → Markdown + Mermaid） -->
       <div v-if="message.content || message.status !== 'sending'" ref="bubbleRef" class="bubble" :class="{ streaming: streamingNow }">
         <template v-if="message.content && !mdReady"><div class="plain-text">{{ shownContent }}</div></template>
-        <div v-else-if="mdReady" ref="contentRef" class="md" v-html="mdHtml" @click="onMermaidToolsClick" @mousedown="onMermaidPanStart" @wheel="onMermaidWheel"></div>
+        <div v-else-if="mdReady" ref="contentRef" class="md" v-html="mdHtml" @click="onContentClick" @mousedown="onMermaidPanStart" @wheel="onMermaidWheel"></div>
         <span v-else-if="streamingNow" class="skeleton">▍</span>
         <span v-else-if="message.status === 'stopped'" class="nc-dim">{{ t('chat.stoppedNote') }}</span>
         <span v-else-if="message.status === 'failed'" class="nc-dim">{{ t('chat.failedNote') }}</span>
