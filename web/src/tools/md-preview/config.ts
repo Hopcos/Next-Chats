@@ -1,4 +1,6 @@
 import MarkdownIt from 'markdown-it'
+import { installMarkdownMath } from '@/utils/markdownMath'
+import 'katex/dist/katex.min.css'
 
 /** Markdown Preview 插件配置：渲染器 + 默认示例 + 本地状态键 */
 export const DEFAULT_CONTENT = `# Hello Markdown
@@ -29,8 +31,9 @@ console.log('Hello Next Chats')
 
 export const LS_KEY = 'nc.tool.md-preview.content'
 
-/** 与聊天渲染一致的安全配置：不渲染原始 HTML（防 XSS） */
+/** 与聊天渲染一致的安全配置：不渲染原始 HTML（防 XSS）；数学公式 KaTeX（与聊天一致） */
 export const md = new MarkdownIt({ html: false, linkify: true, breaks: true })
+installMarkdownMath(md)
 
 export function loadContent(): string {
   try {

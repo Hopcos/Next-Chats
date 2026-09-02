@@ -111,3 +111,42 @@ body {
   background: rgba(148, 163, 184, 0.35);
   border-radius: 3px;
 }
+
+/* ---- KaTeX 数学公式（聊天 / Markdown 预览共用）---- */
+.math-block {
+  margin: 0.35em 0;
+  padding: 2px 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
+}
+
+.math-block::-webkit-scrollbar {
+  height: 4px;
+}
+
+.math-block::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.35);
+  border-radius: 2px;
+}
+
+/* 块级公式本身不再带外边距（由外层 .math-block 控制），避免编辑器里的默认 1em 边距造成段落空隙 */
+.math-block .katex-display {
+  margin: 0;
+}
+
+/* 公式行高独立于文本行距：防止 .md 的紧凑行高把分子/分母压扁 */
+.md .math-block,
+.math-block {
+  line-height: 1.15;
+}
+
+/* 渲染失败回退（理论不可达，防御兜底）：等宽字体原文展示 */
+code.math-fallback {
+  display: block;
+  white-space: pre-wrap;
+  border: 1px dashed rgba(245, 108, 108, 0.5);
+  padding: 4px 8px;
+  border-radius: 6px;
+  color: var(--nc-text-dim);
+}

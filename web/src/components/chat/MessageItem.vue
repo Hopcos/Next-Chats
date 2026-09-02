@@ -8,6 +8,8 @@ import ToolCard from '@/components/chat/ToolCard.vue'
 import { kernel } from '@/kernel'
 import { copyText } from '@/utils/clipboard'
 import { captureElementToPng, downloadBlob, stamp } from '@/utils/capture'
+import { installMarkdownMath } from '@/utils/markdownMath'
+import 'katex/dist/katex.min.css'
 
 const props = defineProps<{ message: UiMessage }>()
 
@@ -155,6 +157,7 @@ const md = new MarkdownIt({
   linkify: true,
   breaks: true,
 })
+installMarkdownMath(md) // 数学公式：块级 $$...$$ + 行内 $...$（KaTeX）
 
 const defaultLinkOpen =
   md.renderer.rules.link_open ??
