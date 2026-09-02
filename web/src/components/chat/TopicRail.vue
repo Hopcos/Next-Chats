@@ -86,7 +86,11 @@ onUnmounted(() => {
   <div v-if="topics.length > 1" class="topic-rail" aria-hidden="true">
     <div v-for="(tp, i) in topics" :key="tp.id" class="rail-line-wrap" @click="jump(i)">
       <el-tooltip :content="titleOf(tp)" placement="left" :show-after="300" :offset="8">
-        <div class="rail-line" :class="{ active: i === activeIndex }" :style="{ '--rail-w': lineWidth(i) }" />
+        <div
+          class="rail-line"
+          :class="{ active: i === activeIndex }"
+          :style="{ '--rail-i': i, '--rail-w': lineWidth(i), animationDelay: -0.16 * i + 's' }"
+        />
       </el-tooltip>
     </div>
   </div>
@@ -134,19 +138,43 @@ onUnmounted(() => {
   line-height: 0;
   /* 加宽热区：横条最宽 44px，热区留足横向余量，方便 hover/点击 */
   width: 46px;
+  /* 固定轨道高度：跳动动画（scaleY）不会挤压/推乱相邻话题的布局 */
+  height: 14px;
   display: flex;
+  align-items: center;
   justify-content: center;
-  padding: 2px 0;
 }
 
-/* 横条：水平条，宽度随话题数缩放（--rail-w 内联注入），hover 加长 */
+/* 横条：水平条，宽度随话题数缩放（--rail-w 内联注入），hover 加长；高度做"音乐波纹"式节律跳动 */
 .rail-line {
   flex-shrink: 0;
   height: 3px;
   width: var(--rail-w, 20px);
   border-radius: 2px;
   background: var(--nc-border);
-  transition: width 0.18s ease, background 0.15s, box-shadow 0.15s, transform 0.15s;
+  transform-origin: center;
+  /* 跳动：3px → 约 13px 再回落；ease-in-out 对称波形，类似均衡器电平 */
+  animation: rail-wave 1.6s ease-in-out infinite;
+  /* 相位按行号错开（负 delay 立即铺开）→ 多条横线形成沿轨道自上而下流动的波纹 */
+  animation-delay: calc(var(--rail-i, 0) * -0.16s);
+  transition: width 0.18s ease, background 0.15s, box-shadow 0.15s;
+}
+
+@keyframes rail-wave {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+  50% {
+    transform: scaleY(4.4);
+  }
+}
+
+/* 用户系统偏好减少动态效果时，停止跳动（保留高亮/宽窄功能） */
+@media (prefers-reduced-motion: reduce) {
+  .rail-line {
+    animation: none;
+  }
 }
 
 /* hover（整行热区）：横条加长，更易看清与选中 */

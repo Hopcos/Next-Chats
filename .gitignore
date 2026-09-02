@@ -42,3 +42,5 @@ Thumbs.db
 .probe/
 nc-*.mjs
 *.bak
+# headless 浏览器临时数据目录（Edge CDP 探测）
+web/scripts/.edge-*/
