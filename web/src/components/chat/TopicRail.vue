@@ -98,8 +98,9 @@ onUnmounted(() => {
   right: 6px;
   top: 50%;
   transform: translateY(-50%);
-  /* 固定高度（非 max-height）+ overflow → 滚动条必然出现，底部话题始终可达 */
-  height: min(78vh, 640px);
+  /* 固定高度（但以包含块高度为上限）→ 垂直居中时永不向上穿出消息区、盖住顶栏头像；
+     overflow → 滚动条必然出现，底部话题始终可达 */
+  height: min(78vh, 640px, calc(100% - 10px));
   display: flex;
   flex-direction: column;
   gap: 10px;

@@ -236,6 +236,7 @@ function openToolsHub() {
           <el-select
             :model-value="kernel.theme.state.theme"
             size="small"
+            class="theme-picker"
             style="width: 96px"
             @change="(v: string) => kernel.theme.set(v as never)"
           >
@@ -299,14 +300,32 @@ function openToolsHub() {
   backdrop-filter: blur(10px);
 }
 
+/* 左侧标题区：允许被压缩（flex 默认 min-width:auto 不收缩，超长标题会把右侧 actions
+   整体挤出视口 → 头像悬停/点击失效）。min-width:0 + 省略号保证任何窗口宽度下右侧恒在视口内 */
+.title-area {
+  min-width: 0;
+  flex: 0 1 auto;
+  display: flex;
+  align-items: center;
+  overflow: hidden;
+  margin-right: 12px;
+}
+
 .session-title {
   margin: 0;
   font-size: 16px;
   font-weight: 600;
   cursor: pointer;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
+/* 右侧操作区：永不收缩（头像最右永远完整可见可点），并提升层级防被任何覆盖层遮挡 */
 .actions {
+  position: relative;
+  z-index: 10;
+  flex-shrink: 0;
   display: flex;
   align-items: center;
   gap: 12px;
@@ -345,5 +364,62 @@ function openToolsHub() {
   color: var(--nc-primary);
   border-color: var(--nc-primary);
   box-shadow: 0 0 0 3px color-mix(in srgb, var(--nc-primary) 15%, transparent);
+}
+
+/* 窄窗口自适应：actions 固定总宽约 790px 时，最右的头像下拉会被推出视口右侧，
+   导致整块区域悬停/点击失效（指针不变、点了没反应；缩小页面后视口变宽才恢复）。
+   这里按宽度分级压缩次要控件，保证头像始终落在视口内。 */
+@media (max-width: 1020px) {
+  .actions {
+    gap: 8px;
+  }
+
+  .icon-actions {
+    gap: 6px;
+  }
+
+  .toolbar-entry {
+    width: 28px;
+    height: 28px;
+  }
+
+  /* 3D 背景开关属锦上添花，窄屏优先隐藏（:deep 命中 el-switch 根元素） */
+  :deep(.actions .el-switch) {
+    display: none;
+  }
+}
+
+@media (max-width: 900px) {
+  /* 900 档：除收窄选择器外，隐藏主题选择器与 3/4 号图标（设置/工具台），
+     否则 820~880px 窗口下头像（原 x≈854）仍溢出视口无法点击 */
+  :deep(.actions .el-select) {
+    width: 76px !important;
+  }
+
+  :deep(.actions .el-select.theme-picker) {
+    display: none;
+  }
+
+  .icon-actions .toolbar-entry:nth-child(3),
+  .icon-actions .toolbar-entry:nth-child(4) {
+    display: none;
+  }
+
+  .actions {
+    gap: 6px;
+  }
+}
+
+@media (max-width: 780px) {
+  :deep(.actions .el-select) {
+    width: 70px !important;
+  }
+}
+
+@media (max-width: 560px) {
+  /* 极端窄窗（手机横屏/极小窗口）：隐藏整个图标组，只留语言选择与头像，保证头像不溢出 */
+  .icon-actions {
+    display: none;
+  }
 }
 </style>
