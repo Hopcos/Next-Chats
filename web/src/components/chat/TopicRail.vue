@@ -16,10 +16,11 @@ function titleOf(m: UiMessage): string {
   return s.length > 46 ? s.slice(0, 46) + '…' : s
 }
 
-function lineHeight(i: number): string {
+/** 横条宽度：话题越多每条越短（14~44px），整体保持紧凑 */
+function lineWidth(i: number): string {
   const n = topics.value.length
-  const h = Math.max(10, Math.min(30, Math.round(320 / n)))
-  return h + 'px'
+  const w = Math.max(14, Math.min(44, Math.round(320 / Math.max(1, n))))
+  return w + 'px'
 }
 
 function jump(i: number) {
@@ -57,15 +58,22 @@ function onScroll() {
   })
 }
 
-watch(topics, () => {
-  // 无条件定位到最后一个话题：无论以任何方式进入会话，右侧竖轨高亮最后一项（不依赖滚动事件、不恢复缓存位置）
-  activeIndex.value = Math.max(0, topics.value.length - 1)
-})
+// 仅当话题（user 提问）数量真正增长时才定位到最后一项：
+// 流式回复/其它消息更新会重建 topics 数组引用，若不判数量，会把用户手动滚动后的高亮强行拽回底部
+let lastTopicCount = 0
+watch(
+  topics,
+  (list) => {
+    const n = list.length
+    const grew = n > lastTopicCount
+    lastTopicCount = n
+    if (grew && n > 0) activeIndex.value = n - 1
+  },
+  { immediate: true },
+)
 
 onMounted(() => {
   props.scroller?.addEventListener('scroll', onScroll, { passive: true })
-  // 首次进入：无条件定位到最后一个话题（不先按滚动位置计算，直接高亮最后一项）
-  activeIndex.value = Math.max(0, topics.value.length - 1)
 })
 
 onUnmounted(() => {
@@ -78,7 +86,7 @@ onUnmounted(() => {
   <div v-if="topics.length > 1" class="topic-rail" aria-hidden="true">
     <div v-for="(tp, i) in topics" :key="tp.id" class="rail-line-wrap" @click="jump(i)">
       <el-tooltip :content="titleOf(tp)" placement="left" :show-after="300" :offset="8">
-        <div class="rail-line" :class="{ active: i === activeIndex }" :style="{ height: lineHeight(i) }" />
+        <div class="rail-line" :class="{ active: i === activeIndex }" :style="{ '--rail-w': lineWidth(i) }" />
       </el-tooltip>
     </div>
   </div>
@@ -123,21 +131,35 @@ onUnmounted(() => {
 .rail-line-wrap {
   cursor: pointer;
   line-height: 0;
+  /* 加宽热区：横条最宽 44px，热区留足横向余量，方便 hover/点击 */
+  width: 46px;
+  display: flex;
+  justify-content: center;
+  padding: 2px 0;
 }
 
+/* 横条：水平条，宽度随话题数缩放（--rail-w 内联注入），hover 加长 */
 .rail-line {
-  width: 3px;
+  flex-shrink: 0;
+  height: 3px;
+  width: var(--rail-w, 20px);
   border-radius: 2px;
   background: var(--nc-border);
-  transition: background 0.15s, box-shadow 0.15s, transform 0.15s;
+  transition: width 0.18s ease, background 0.15s, box-shadow 0.15s, transform 0.15s;
 }
 
-.rail-line:hover {
+/* hover（整行热区）：横条加长，更易看清与选中 */
+.rail-line-wrap:hover .rail-line {
+  width: min(calc(var(--rail-w, 20px) * 1.7), 46px);
   background: color-mix(in srgb, var(--nc-primary) 55%, transparent);
 }
 
 .rail-line.active {
   background: var(--nc-primary);
   box-shadow: 0 0 6px color-mix(in srgb, var(--nc-primary) 60%, transparent);
+}
+
+.rail-line-wrap:hover .rail-line.active {
+  box-shadow: 0 0 8px color-mix(in srgb, var(--nc-primary) 70%, transparent);
 }
 </style>
