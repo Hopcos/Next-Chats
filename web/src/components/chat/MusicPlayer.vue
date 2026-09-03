@@ -162,6 +162,19 @@ onBeforeUnmount(() => {
 <template>
   <div class="music-player" :class="{ playing }" aria-label="音乐播放器">
     <div class="mp-left">
+      <div class="mp-controls">
+        <button class="mp-btn" type="button" title="上一首" aria-label="上一首" @click="prev">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" /></svg>
+        </button>
+        <button class="mp-btn mp-play" type="button" :title="playing ? '暂停' : '播放'" aria-label="播放或暂停" @click="toggle">
+          <svg v-if="playing" viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z" /></svg>
+          <svg v-else viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
+        </button>
+        <button class="mp-btn" type="button" title="下一首" aria-label="下一首" @click="next">
+          <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z" /></svg>
+        </button>
+      </div>
+
       <span class="mp-eq" :class="{ on: playing }" aria-hidden="true">
         <i /><i /><i />
       </span>
@@ -169,19 +182,6 @@ onBeforeUnmount(() => {
         <span class="mp-title">{{ titleText }}</span>
         <span class="mp-src">{{ dead ? '' : sourceName + (loading ? ' · 连接中…' : '') }}</span>
       </div>
-    </div>
-
-    <div class="mp-controls">
-      <button class="mp-btn" type="button" title="上一首" aria-label="上一首" @click="prev">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M6 6h2v12H6zm3.5 6 8.5 6V6z" /></svg>
-      </button>
-      <button class="mp-btn mp-play" type="button" :title="playing ? '暂停' : '播放'" aria-label="播放或暂停" @click="toggle">
-        <svg v-if="playing" viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M6 5h4v14H6zm8 0h4v14h-4z" /></svg>
-        <svg v-else viewBox="0 0 24 24" width="17" height="17" fill="currentColor" aria-hidden="true"><path d="M8 5v14l11-7z" /></svg>
-      </button>
-      <button class="mp-btn" type="button" title="下一首" aria-label="下一首" @click="next">
-        <svg viewBox="0 0 24 24" width="15" height="15" fill="currentColor" aria-hidden="true"><path d="M16 6h2v12h-2zM6 18l8.5-6L6 6z" /></svg>
-      </button>
     </div>
 
     <audio ref="audio" preload="none" @playing="onPlaying" @ended="next" @error="onTrackFail" @canplay="clearLoadTimer" />
@@ -193,10 +193,10 @@ onBeforeUnmount(() => {
   flex-shrink: 0;
   display: flex;
   align-items: center;
-  justify-content: space-between;
+  justify-content: flex-start;
   gap: 12px;
   height: 44px;
-  padding: 0 14px 0 18px;
+  padding: 0 14px 0 12px;
   border-bottom: 1px solid var(--nc-border);
   background: color-mix(in srgb, var(--nc-surface) 82%, transparent);
   color: var(--nc-text-dim);
@@ -207,7 +207,7 @@ onBeforeUnmount(() => {
 .mp-left {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 12px;
   min-width: 0;
   flex: 1;
 }
