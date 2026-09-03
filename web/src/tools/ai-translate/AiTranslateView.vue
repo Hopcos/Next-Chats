@@ -7,14 +7,14 @@
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 import { useI18n } from 'vue-i18n'
 import { kernel } from '@/kernel'
-import { http } from '@/api/http'
+import { streamPost } from '@/api/http'
 import { copyText } from '@/utils/clipboard'
 import { DEFAULT_TRANSLATE_PROMPT, LS, loadDirection, loadModel, loadPrompt, savePrompt } from './config'
 import type { Direction } from './config'
 
 const { t } = useI18n()
 
-const MAX_CHARS = 6000
+const MAX_CHARS = 50000
 
 // ---------------- 状态（localStorage-only） ----------------
 const direction = ref<Direction>(loadDirection())
@@ -63,15 +63,20 @@ watch(
   { immediate: true },
 )
 
-// ---------------- 翻译 ----------------
+// ---------------- 翻译（流式输出） ----------------
 const source = ref('')
 const target = ref('')
 const busy = ref(false)
+let abort: AbortController | null = null
 
 const en2zh = computed(() => direction.value === 'en2zh')
 
 async function run() {
-  if (busy.value) return
+  // 翻译中再次点击 = 停止当前流
+  if (busy.value) {
+    abort?.abort()
+    return
+  }
   if (!source.value.trim()) {
     kernel.notify.warning(t('tools.translate.emptyWarn'))
     return
@@ -80,22 +85,41 @@ async function run() {
     kernel.notify.warning(t('tools.translate.modelRequired'))
     return
   }
+  const userPrompt = en2zh.value
+    ? `请将下面的英文翻译成简体中文：\n\n${source.value}`
+    : `Please translate the following Chinese text into English:\n\n${source.value}`
+
   busy.value = true
+  target.value = ''
+  abort = new AbortController()
+  let streamErr: { code?: string; message?: string } | null = null
   try {
-    const userPrompt = en2zh.value
-      ? `请将下面的英文翻译成简体中文：\n\n${source.value}`
-      : `Please translate the following Chinese text into English:\n\n${source.value}`
-    const res = await http.post<{ text: string }>('/api/tools/llm/complete', {
-      modelId: modelId.value,
-      systemPrompt: promptText.value.trim() || DEFAULT_TRANSLATE_PROMPT,
-      prompt: userPrompt,
-      maxTokens: 2048,
-    })
-    target.value = res.text
+    await streamPost(
+      '/api/tools/llm/stream',
+      {
+        modelId: modelId.value,
+        systemPrompt: promptText.value.trim() || DEFAULT_TRANSLATE_PROMPT,
+        prompt: userPrompt,
+        // 输出上限对准 5 万字原文/译文（中文字 ≈ 2 token，5 万字 ≈ 100k token），留足余量
+        maxTokens: 128000,
+      },
+      (ev) => {
+        if (ev.kind === 'text_delta') target.value += String(ev.text ?? '')
+        else if (ev.kind === 'error') streamErr = { code: String(ev.code ?? ''), message: String(ev.message ?? '') }
+      },
+      abort.signal,
+    )
+    if (streamErr) throw streamErr
   } catch (e) {
-    kernel.notify.error((e as { message?: string }).message ?? t('tools.translate.failed'), (e as { code?: string }).code)
+    const err = e as { name?: string; code?: string; message?: string }
+    if (err.name === 'AbortError' || err.code === 'INTERRUPTED') {
+      // 用户主动停止：保留已生成的译文
+    } else {
+      kernel.notify.error(err.message ?? t('tools.translate.failed'), err.code as string)
+    }
   } finally {
     busy.value = false
+    abort = null
   }
 }
 
@@ -244,7 +268,7 @@ onBeforeUnmount(stopSpeak)
             </svg>
           </button>
           <el-button type="primary" class="tr-go" :loading="busy" size="large" @click="run">
-            {{ busy ? t('tools.translate.translating') : t('tools.translate.translateBtn') }}
+            {{ busy ? t('tools.translate.stop') : t('tools.translate.translateBtn') }}
           </el-button>
         </div>
 

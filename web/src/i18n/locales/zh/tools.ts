@@ -26,6 +26,7 @@ export default {
       target: '译文',
       translateBtn: '翻译',
       translating: '翻译中…',
+      stop: '停止',
       swap: '互换语言与内容',
       copy: '复制',
       copied: '已复制',

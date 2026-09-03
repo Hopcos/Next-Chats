@@ -26,6 +26,7 @@ export default {
       target: 'Translation',
       translateBtn: 'Translate',
       translating: 'Translating…',
+      stop: 'Stop',
       swap: 'Swap languages & texts',
       copy: 'Copy',
       copied: 'Copied',
