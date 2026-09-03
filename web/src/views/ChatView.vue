@@ -11,6 +11,7 @@ import SessionSidebar from '@/components/chat/SessionSidebar.vue'
 import MessageList from '@/components/chat/MessageList.vue'
 import ChatInputBar from '@/components/chat/ChatInputBar.vue'
 import ChatSettingsDrawer from '@/components/chat/ChatSettingsDrawer.vue'
+import MusicPlayer from '@/components/chat/MusicPlayer.vue'
 
 const router = useRouter()
 const { t } = useI18n()
@@ -259,6 +260,9 @@ function openToolsHub() {
           </el-dropdown>
         </div>
       </header>
+
+      <!-- 顶部音乐播放器：多公开源自动切换，独立细条不挤压消息区 -->
+      <MusicPlayer />
 
       <!-- :key 绑定会话 id：切换会话时整个列表重挂载 → 首屏强制滚到底部 -->
       <MessageList
