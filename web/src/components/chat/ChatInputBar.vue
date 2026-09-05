@@ -28,7 +28,8 @@ function saveThinking() {
   localStorage.setItem(LS_THINKING_EFFORT, thinkingEffort.value)
 }
 
-const streaming = computed(() => kernel.chat.state.streaming)
+/** 仅当前会话在流式推理时视为“忙”：其它会话窗口可同时问答，互不影响 */
+const streaming = computed(() => kernel.chat.isStreaming(kernel.session.state.currentId))
 
 // 无当前会话时禁用输入并引导（首次使用兜底，与 ChatView 自动创建一致）
 const noSession = computed(() => !kernel.session.state.currentId)

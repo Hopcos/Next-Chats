@@ -445,7 +445,10 @@ export class ChatService extends Service {
   state = reactive({
     /** sessionId → 消息列表（含进行中的流式消息） */
     messages: {} as Record<string, UiMessage[]>,
+    /** 是否为派生值：streamingSids 非空即 true（保持字段名兼容旧消费方） */
     streaming: false,
+    /** 当前正在流式推理的会话 id 集合（多会话可同时推理，互不影响） */
+    streamingSids: [] as string[],
     /** 待用户审批的工具调用 */
     pendingApproval: null as {
       approvalId: string
@@ -460,6 +463,24 @@ export class ChatService extends Service {
 
   private controllers = new Map<string, AbortController>()
   private historyLoaded = new Set<string>()
+
+  /** 记录/解除某会话的流式状态：streaming 与事件按集合派生，多会话并发互不覆盖 */
+  private markStreaming(sid: string, on: boolean) {
+    const sids = this.state.streamingSids
+    const i = sids.indexOf(sid)
+    if (on && i < 0) sids.push(sid)
+    if (!on && i >= 0) sids.splice(i, 1)
+    const any = sids.length > 0
+    if (this.state.streaming !== any) {
+      this.state.streaming = any
+      this.ctx.emit('chat:streaming-changed', any)
+    }
+  }
+
+  /** 指定会话当前是否正在流式推理 */
+  isStreaming(sid: string | null): boolean {
+    return !!sid && this.state.streamingSids.includes(sid)
+  }
 
   constructor(ctx: Context) {
     super(ctx, 'chat')
@@ -623,8 +644,7 @@ export class ChatService extends Service {
     const settings = (this.ctx.get('settings') as SettingsService).state.chat
     const controller = new AbortController()
     this.controllers.set(sid, controller)
-    this.state.streaming = true
-    this.ctx.emit('chat:streaming-changed', true)
+    this.markStreaming(sid, true)
 
     const onEvent = (ev: Record<string, unknown>) => this.applyEvent(sid, pending, ev as unknown as AgentEventDto)
 
@@ -659,8 +679,7 @@ export class ChatService extends Service {
         ;(this.ctx.get('notify') as NotifyService).error(translateError(e.code, e.message ?? ''), e.code)
       }
     } finally {
-      this.state.streaming = false
-      this.ctx.emit('chat:streaming-changed', false)
+      this.markStreaming(sid, false)
       this.controllers.delete(sid)
       this.state.activeMessageId = null
       // 流结束后，从服务端拉一次最新消息，保证持久化内容一致
